@@ -1,8 +1,8 @@
-author: [Zhuowei,MinecraftDawn]
+author: [Zhuowei,MinecraftDawn,jdeast]
 database: false
-description: Implementation of the Minecraft PI modding API
-main: net.zhuoweizhang.raspberryjuice.RaspberryJuicePlugin
-name: RaspberryJuice
+description: Implementation of the Minecraft Python API
+main: fruitjuice.FruitJuicePlugin
+name: FruitJuice
 startup: postworld
-version: '1.14-0.6'
+version: '0.1.0'
 api-version: 1.13

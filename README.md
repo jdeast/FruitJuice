@@ -1,6 +1,17 @@
-# RaspberryJuice
+# FruitJuice
 
-A Minecraft Bukkit plugin which connect to python program
+A Minecraft Bukkit plugin which enables python and/or scratch programming. 
+
+This Bukkit plugin is a successor to RaspberryJuice that implements a Python/Scratch API to vanilla minecraft (not dependent on the raspberry pi edition).
+
+See README_server_setup.md for instructions to set up your own python/scratch server that works on java or bedrock.
+
+To use Python, you must connect it to a Bukkit server running this plugin, and use the companion pyncraft library:
+pip install pyncraft
+
+To use scratch, you must use this URL:
+http://pruss.mobi/scratch/?load_plugin=http://lweb.cfa.harvard.edu/~jeastman/scratch.js
+and connect it to a Bukkit server running this plugin and a websocket relay.
 
 ## Commands
 
@@ -180,35 +191,30 @@ Modify config.yml:
 
 ## Build
 
-To build RaspberryJuice, [download and install Maven](https://maven.apache.org/install.html), clone the repository, run `mvn package':
+### From jar file
+
+copy https://github.com/jdeast/FruitJuice/target/FruitJuice.jar to your plugin directory 
+
+### From Source
+
+To build FruitJuice, [download and install Maven](https://maven.apache.org/install.html), clone the repository, run `mvn package':
 
 ```
-git clone https://github.com/zhuowei/RaspberryJuice
-cd RaspberryJuice
+git clone https://github.com/jdeast/FruitJuice
+cd FruitJuice
 mvn package
 ```
 
 ## Version history
 
- - 1.14 - Modify the command, change the block number identity to block name.
- - 1.11 - spawnEntity, setDirection, setRotation, setPitch
- - 1.10.1 - bug fixes
- - 1.10 - left, right, both hit clicks added to config.yml & fixed minor hit events bug
- - 1.9.1 - minor change to improve connection reset
- - 1.9 - relative and absolute positions added to config.yml
- - 1.8 - minecraft version 1.9.2 compatibility
- - 1.7 - added pollChatPosts() & block update performance improvements
- - 1.6 - added getPlayerId(playerName), getDirection, getRotation, getPitch
- - 1.5 - entity functions
- - 1.4.2 - bug fixes
- - 1.4 - bug fixes, port specified in config.yml
- - 1.3 - getHeight, multiplayer, getBlocks
- - 1.2 - added world.getBlockWithData
- - 1.1.1 - block hit events
- - 1.1 - Initial release
+ - 1.0.0 - Initial release
 
 ## Contributors
 
+ - [jdeast](https://github.com/jdeast)
+ - [stoneskin](https://github.com/stoneskin) (pyncraft/mcpi_e)
+ - [apruss](https://github.com/arpruss) (scratch)
+ - [minecraftdawn](https://github.com/minecraftdawn)
  - [zhuowei](https://github.com/zhuowei)
  - [martinohanlon](https://github.com/martinohanlon)
  - [jclaggett](https://github.com/jclaggett)
