@@ -4,7 +4,7 @@ A Minecraft Bukkit plugin which enables python and/or scratch programming.
 
 This Bukkit plugin is a successor to RaspberryJuice that implements a Python/Scratch API to vanilla minecraft (not dependent on the raspberry pi edition).
 
-See README_server_setup.md for instructions to set up your own python/scratch server that works on java or bedrock.
+See [README_server_setup.md](https://github.com/jdeast/FruitJuice/blob/master/README_server_setup.md) for instructions to set up your own python/scratch server that works on java or bedrock.
 
 To use Python, you must connect it to a Bukkit server running this plugin, and use the companion pyncraft library:
 pip install pyncraft
