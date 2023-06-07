@@ -110,8 +110,11 @@ On your router, forward ports 19132 (bedrock), 25565 (java), 4711 (python), and 
 Unfortunately, the details depend on the specifics of your router. You can google something like "{router model} + port forwarding", but generally it's something like
 
 a. In a browser, type 192.168.1.1 in the main bar (if that doesn't work, try 192.168.1.0, 192.168.0.0, 192.168.0.1)
+
 b. login (google for the default username/password, or it may be on a sticker on the router
+
 c. Click on "port forwarding"
+
 d. Add a forward from the ports above to your minecraft server's internal IP
 
 To the outside world, all the computers in your house have only 1 IP (your router), and you can't directly access the minecraft server. These rules forward traffic from your router to the minecraft server inside your network.
