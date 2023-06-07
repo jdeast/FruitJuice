@@ -109,10 +109,10 @@ On your router, forward ports 19132 (bedrock), 25565 (java), 4711 (python), and 
 
 Unfortunately, the details depend on the specifics of your router. You can google something like "{router model} + port forwarding", but generally it's something like
 
-	- In a browser, type 192.168.1.1 in the main bar (if that doesn't work, try 192.168.1.0, 192.168.0.0, 192.168.0.1)
-	- login (google for the default username/password, or it may be on a sticker on the router
-	- Click on "port forwarding"
-	- Add a forward from the ports above to your minecraft server's internal IP
+a. In a browser, type 192.168.1.1 in the main bar (if that doesn't work, try 192.168.1.0, 192.168.0.0, 192.168.0.1)
+b. login (google for the default username/password, or it may be on a sticker on the router
+c. Click on "port forwarding"
+d. Add a forward from the ports above to your minecraft server's internal IP
 
 To the outside world, all the computers in your house have only 1 IP (your router), and you can't directly access the minecraft server. These rules forward traffic from your router to the minecraft server inside your network.
 
@@ -203,9 +203,9 @@ This loads a standard scratch interface, but with an additional "Minecraft" set 
 
 ## More info
 
-[This website](https://www.instructables.com/Coding-in-Minecraft-With-Scratch/) describes connecting to a Forge server running RaspberryJamMod instead of FruitJuice.
+[This website](https://www.instructables.com/Coding-in-Minecraft-With-Scratch/) describes connecting to a Forge server running RaspberryJamMod instead of a Bukkit server running FruitJuice as we are.
 
-So ignore the installation and their link, (steps 1 & 2 -- they won't work with our server), but its use is basically identical (our scratch plugin is a slightly modified version of theirs). You can follow along with the examples and explanations starting at step 3.
+So ignore the installation and their scratch link, (steps 1 & 2 -- they won't work with our server), but its use is basically identical (our scratch plugin is a slightly modified version of theirs). You can follow along with the examples and explanations starting at step 3.
 
 # Credits
 A huge thank you to developers of all the plugins (Paper, RaspberryJuice, Geyser, Floodgate) used!
