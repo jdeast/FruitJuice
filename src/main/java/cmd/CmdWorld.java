@@ -11,6 +11,8 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Directional;
+import org.bukkit.block.data.FaceAttachable;
+
 import org.bukkit.block.Sign;
 import org.bukkit.block.data.type.WallSign;
 import org.bukkit.entity.Entity;
@@ -59,11 +61,21 @@ public class CmdWorld {
 			if (blockData instanceof Directional) {
 				// set the default direction to WEST
 				String dir="WEST";
-				if (args.length >= 4) {
+				if (args.length >= 5) {
 					dir = args[4];
 				}
  				((Directional) blockData).setFacing(BlockFace.valueOf(dir));
 			}
+			if (blockData instanceof FaceAttachable) {
+				// set the default face to 
+				String face="WALL";
+				if (args.length >= 6) {
+					face = args[5];
+				}
+				((FaceAttachable) blockData).setAttachedFace(FaceAttachable.AttachedFace.valueOf(face));
+			}
+
+
 			thisBlock.setBlockData(blockData);
 
 			//updateBlock(world, loc, args[3]);
