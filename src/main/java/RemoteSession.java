@@ -154,7 +154,8 @@ public class RemoteSession {
     }
 
     protected void handleLine(String line) {
-        System.out.println(line);
+        //System.out.println(line);
+        plugin.getLogger().info(line);
         String methodName = line.substring(0, line.indexOf("("));
         //split string into args, handles , inside " i.e. ","
         String[] args = line.substring(line.indexOf("(") + 1, line.length() - 1).split(",");
@@ -172,10 +173,11 @@ public class RemoteSession {
             // get the world
             World world = origin.getWorld();
 
-            // 分割命令
+            // split command
             String[] cmd = c.split("[.]", 2);
 
-            System.out.println(cmd);
+            //System.out.println(cmd);
+            //plugin.getLogger().info(c);
 
             if (cmd[0].equals("player")) {
                 cmdPlayer.execute(cmd[1], args);
@@ -199,7 +201,8 @@ public class RemoteSession {
 
                     chatMessage = chatMessage + args[count] + " ";
                 }
-                System.out.println(chatMessage);
+                plugin.getLogger().info(chatMessage);
+                //System.out.println(chatMessage);
 
                 chatMessage = chatMessage.substring(0, chatMessage.length() - 1);
                 server.broadcastMessage(chatMessage);
