@@ -6,7 +6,7 @@ This Bukkit plugin is a successor to RaspberryJuice that implements a Python/Scr
 
 See [README_server_setup.md](https://github.com/jdeast/FruitJuice/blob/master/README_server_setup.md) for instructions to set up your own python/scratch server that works on java or bedrock.
 
-To use Python, you must connect it to a Bukkit server running this plugin, and use the companion pyncraft library:
+To use Python, you must connect it to a Bukkit server running this plugin, and use the companion [pyncraft](https://github.com/jdeast/pyncraft) library:
 pip install pyncraft
 
 To use scratch, you must use this URL:
