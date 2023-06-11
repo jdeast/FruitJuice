@@ -198,11 +198,13 @@ This will render a T-rex inside minecraft at the first player's position, or at 
 
 This loads a standard scratch interface, but with an additional "Minecraft" set of command blocks that allow you to connect to your server, chat, set blocks, spawn entities, etc.
 
-2. Load rainbowtower.sb
+2. Load FruitJuice/scratch/examples/rainbowtower.sb
 
 3. Edit the address in the connect block to match your server's IP.
 
 4. Click the green flag and watch it build a rainbow tower.
+
+NOTE: Debugging is hard as many failures are silent. Your browser's developer tools may help. 
 
 ## More info
 
