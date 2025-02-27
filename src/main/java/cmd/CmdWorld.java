@@ -58,6 +58,18 @@ public class CmdWorld {
 			thisBlock.setType(Material.valueOf(args[3]));
 
 			BlockData blockData = thisBlock.getBlockData();
+
+
+/*
+https://www.spigotmc.org/threads/how-to-place-a-bed-in-1-15.414267/
+        	if (Tag.BEDS.isTagged(blockData.material.getMaterial())) {
+            	BlockFace facing = LocationUtil.getFacing(locations.get(0), locations.get(1));
+            	Block bedHeadBlock = locations.get(1).getBlock();
+            	System.out.println(material.getMaterial().name());
+            	blocks.addAll(setBed(bedHeadBlock, facing, material.getMaterial()));
+        	}
+*/
+
 			if (blockData instanceof Directional) {
 				// set the default direction to WEST
 				String dir="WEST";

@@ -1,6 +1,7 @@
 package fruitjuice.cmd;
 
 import fruitjuice.RemoteSession;
+import fruitjuice.FruitJuicePlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -9,9 +10,12 @@ import org.bukkit.util.Vector;
 public class CmdPlayer {
     private final String preFix = "player.";
     private RemoteSession session;
+   	private Player attachedPlayer = null;
+ 	private FruitJuicePlugin plugin;
 
-    public CmdPlayer(RemoteSession session) {
+    public CmdPlayer(RemoteSession session, FruitJuicePlugin plugin) {
         this.session = session;
+        this.plugin = plugin;
     }
 
 	private boolean serverHasPlayer() {
@@ -19,15 +23,43 @@ public class CmdPlayer {
 	}
 
 	private Player getCurrentPlayer() {
+		// if no players, return null
 		if (!serverHasPlayer()) {
 			session.send("Fail,There are no players in the server.");
 			return null;
-		} else {
-			for (Player player : Bukkit.getServer().getOnlinePlayers()) {
-				return player;
+		} 
+
+		// if the player hasnt already been retreived for this session, go and get it.
+		Player player = attachedPlayer;
+		if (player == null) {
+			player = plugin.getHostPlayer();
+			attachedPlayer = player;
+			return player;
+		}
+
+		// otherwise, return the player
+		return player;
+	}
+
+	private Player getCurrentPlayer(String name) {
+
+		// if no players, return null
+		if (!serverHasPlayer()) {
+			session.send("Fail,There are no players in the server.");
+			return null;
+		} 
+
+		// if a named player is returned use that
+		Player player = plugin.getNamedPlayer(name);
+		if (player == null) {
+			player = attachedPlayer;
+			// otherwise go and get the host player and make that the attached player
+			if (player == null) {
+				player = plugin.getHostPlayer();
 			}
 		}
-		return null;
+		attachedPlayer = player;
+		return player;
 	}
 
     public void execute(String command, String[] args) {
@@ -79,6 +111,11 @@ public class CmdPlayer {
 			//get players current location, so when they are moved we will use the same pitch and yaw (rotation)
 			Location loc = currentPlayer.getLocation();
 			currentPlayer.teleport(session.parseRelativeLocation(x, y, z, loc.getPitch(), loc.getYaw()));
+
+			// player.setPlayer
+		} else if (command.equals("setPlayer")) {
+			String playerName = args[0];
+			getCurrentPlayer(playerName);
 
 			// player.setDirection
 		} else if (command.equals("setDirection")) {

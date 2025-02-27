@@ -5,13 +5,13 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.jdeast</groupId>
     <artifactId>FruitJuice</artifactId>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-	<version>2.3.2</version>
+	<version>3.12.1</version>
                 <configuration>
                     <source>11</source>
                     <target>11</target>

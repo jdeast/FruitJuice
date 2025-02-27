@@ -4,6 +4,7 @@ import fruitjuice.cmd.CmdEntity;
 import fruitjuice.cmd.CmdEvent;
 import fruitjuice.cmd.CmdPlayer;
 import fruitjuice.cmd.CmdWorld;
+
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -80,7 +81,7 @@ public class RemoteSession {
     public void createCmdObject(){
         cmdEntity = new CmdEntity(this);
         cmdEvent = new CmdEvent(this);
-        cmdPlayer = new CmdPlayer(this);
+        cmdPlayer = new CmdPlayer(this, plugin);
         cmdWorld = new CmdWorld(this);
 
     }

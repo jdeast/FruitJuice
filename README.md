@@ -10,7 +10,7 @@ To use Python, you must connect it to a Bukkit server running this plugin, and u
 pip install pyncraft
 
 To use scratch, you must use this URL:
-http://pruss.mobi/scratch/?load_plugin=http://lweb.cfa.harvard.edu/~jeastman/scratch.js
+http://pruss.mobi/scratch/?load_plugin=http://cfa.harvard.edu/~jeastman/scratch.js
 and connect it to a Bukkit server running this plugin and a websocket relay.
 
 ## Commands
@@ -208,6 +208,8 @@ mvn package
 ## Version history
 
  - 0.1.0 - Initial release
+ - 0.2.0 - Updates from integer block IDs to string block IDs broke the way directional blocks work. Partial fix.
+ - 0.3.0 - [minecraftdawn]'s refactoring of cmdPlayer broke player selection implemented in mcpi_e. Fixed.
 
 ## Contributors
 
