@@ -2387,7 +2387,7 @@ class FruitJuice {
                 console.log("If your server is on and configured, and the port is correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site")
                 reject(err);
             };
-        }).then(result => rjm.getPosition().then( result => {
+        })).then(result => rjm.getPosition().then( result => {
             rjm.turtle.pos = result;
         })).then (result => rjm.getRotation().then( result => {
             rjm.playerRot = result;
