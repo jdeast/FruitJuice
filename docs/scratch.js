@@ -104,7 +104,7 @@ class FruitJuice {
 		{
                     "opcode": "connect_p",
                     "blockType": "command",
-                    "text": "connect to Minecraft on [ip] port [port] secure [secure]",
+                    "text": "connect to Minecraft on [ip] port [port]. Secure? [secure]",
                     "arguments": {
                         "ip": {
                             "type": "string",
