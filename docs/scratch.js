@@ -104,7 +104,7 @@ class FruitJuice {
 		{
                     "opcode": "connect_p",
                     "blockType": "command",
-                    "text": "connect to Minecraft on [ip] port [port]. Secure? [secure]",
+                    "text": "connect to Minecraft on [ip] port [port]",
                     "arguments": {
                         "ip": {
                             "type": "string",
@@ -2373,33 +2373,19 @@ class FruitJuice {
                 rjm.socket.close();
 
             rjm.clear();
-
-            rjm.socket = new WebSocket("wss://"+ip+":"+port);
+            rjm.socket = new WebSocket("ws://"+ip+":"+port);
             rjm.socket.onopen = function() {                
                 resolve();
             };
-	    rjm.socket.onerror = function(err) {
-              rjm.socket = new WebSocket("ws://"+ip+":"+port);
-              rjm.socket.onopen = function() {                
-                resolve();
-              };
-              rjm.socket.onerror = function(err) {
-                console.log("If your server is on and configured, and the IP and port is correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site")
+            rjm.socket.onerror = function(err) {
                 reject(err);
             };
-        })
-        .then(() => rjm.getPosition())
-        .then(position => {
-            rjm.turtle.pos = position;
-            return rjm.getRotation();
-        })
-        .then (rotation => {
-            rjm.playerRot = rotation;
+        }).then(result => rjm.getPosition().then( result => {
+            rjm.turtle.pos = result;
+        })).then (result => rjm.getRotation().then( result => {
+            rjm.playerRot = result;
             rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
-        })
-        .catch(err => {
-            console.error("An error occurred:", err);
-	});
+	}));
     };
     
     chat({msg}){
