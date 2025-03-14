@@ -114,6 +114,10 @@ class FruitJuice {
                             "type": "string",
                             "defaultValue": "14711"
 			},
+			"secure":{
+                            "type": "boolean",
+                            "defaultValue": "false"
+			},
                     }
 		},
 		{
@@ -2363,7 +2367,7 @@ class FruitJuice {
         return mode != 0 ? ""+pos[0]+","+pos[1]+","+pos[2] : ""+Math.floor(pos[0])+","+Math.floor(pos[1])+","+Math.floor(pos[2]);
     };
 
-    connect_p({ip,port}){
+    connect_p({ip,port,secure=false}){
         this.ip = ip;
         this.port = port;
 
@@ -2374,9 +2378,16 @@ class FruitJuice {
 
             rjm.clear();
 
-            // change "wss" to "ws" for insecure websockets (no SSL certificate required for websockify on the server)
-            // NOTE: All users will need to make an exception for this site to allow insecure content
-            rjm.socket = new WebSocket("wss://"+ip+":"+port);
+	    if (secure) {
+                // This requires a signed SSL certificate used in the minecraft server's websockify
+		rjm.socket = new WebSocket("wss://"+ip+":"+port);
+            } else {
+                // This requires each user to whitelist this scratch page to allow  
+		rjm.socket = new WebSocket("ws://"+ip+":"+port);
+ 	    }
+
+            //
+
             rjm.socket.onopen = function() {                
                 resolve();
             };
