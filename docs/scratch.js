@@ -2363,29 +2363,54 @@ class FruitJuice {
         return mode != 0 ? ""+pos[0]+","+pos[1]+","+pos[2] : ""+Math.floor(pos[0])+","+Math.floor(pos[1])+","+Math.floor(pos[2]);
     };
 
-    connect_p({ip,port}){
+    connect_p({ip, port}) {
         this.ip = ip;
         this.port = port;
 
         var rjm = this;
         return new Promise(function(resolve, reject) {
-            if (rjm.socket != null)
-                rjm.socket.close();
+            if (rjm.socket != null) {
+                rjm.socket.close(); // Close existing socket if it exists
+            }
 
-            rjm.clear();
-            rjm.socket = new WebSocket("ws://"+ip+":"+port);
-            rjm.socket.onopen = function() {                
-                resolve();
+            rjm.clear(); // Clear previous state if needed
+
+            // Try secure WebSocket first (wss://)
+            rjm.socket = new WebSocket("wss://" + ip + ":" + port);
+        
+            rjm.socket.onopen = function() {
+                resolve(); // Resolve the promise if the secure connection is successful
             };
+
             rjm.socket.onerror = function(err) {
-                reject(err);
+                console.log("Secure WebSocket connection failed. Trying insecure WebSocket...");
+
+                // If secure connection fails, try insecure WebSocket (ws://)
+                rjm.socket = new WebSocket("ws://" + ip + ":" + port);
+
+                rjm.socket.onopen = function() {    
+                    resolve(); // Resolve if insecure WebSocket connects successfully
+                };
+
+                rjm.socket.onerror = function(err) {
+                    // If both secure and insecure connections fail, reject the promise
+                    console.log("If your server is on and configured, and the IP and port are correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site.");
+                    reject(err); // Reject the promise if both secure and insecure connections fail
+                };
             };
-        }).then(result => rjm.getPosition().then( result => {
-            rjm.turtle.pos = result;
-        })).then (result => rjm.getRotation().then( result => {
-            rjm.playerRot = result;
-            rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
-	}));
+        })
+        .then(() => rjm.getPosition())  // First then to get position
+        .then(position => {
+            rjm.turtle.pos = position;  // Set the turtle's position
+            return rjm.getRotation();   // Return a promise for getting the rotation
+        })
+        .then(rotation => {
+            rjm.playerRot = rotation;   // Set the player's rotation
+            rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5 + rotation / 90) * 90); // Update matrix
+        })
+        .catch(err => {
+            console.error("An error occurred:", err);  // Catch any error in the promise chain
+        });
     };
     
     chat({msg}){
