@@ -2378,7 +2378,7 @@ class FruitJuice {
             rjm.socket.onopen = function() {                
                 resolve();
             };
-	    rjm.socket.onerror = function(err) => {
+	    rjm.socket.onerror = function(err) {
               rjm.socket = new WebSocket("ws://"+ip+":"+port);
               rjm.socket.onopen = function() {                
                 resolve();
