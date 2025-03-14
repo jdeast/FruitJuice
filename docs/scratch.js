@@ -114,10 +114,6 @@ class FruitJuice {
                             "type": "string",
                             "defaultValue": "14711"
 			},
-			"secure":{
-                            "type": "boolean",
-                            "defaultValue": false
-			},
                     }
 		},
 		{
@@ -2367,7 +2363,7 @@ class FruitJuice {
         return mode != 0 ? ""+pos[0]+","+pos[1]+","+pos[2] : ""+Math.floor(pos[0])+","+Math.floor(pos[1])+","+Math.floor(pos[2]);
     };
 
-    connect_p({ip,port,secure=false}){
+    connect_p({ip,port}){
         this.ip = ip;
         this.port = port;
 
@@ -2378,20 +2374,17 @@ class FruitJuice {
 
             rjm.clear();
 
-	    if (secure) {
-                // This requires a signed SSL certificate used in the minecraft server's websockify
-		rjm.socket = new WebSocket("wss://"+ip+":"+port);
-            } else {
-                // This requires each user to whitelist this scratch page to allow  
-		rjm.socket = new WebSocket("ws://"+ip+":"+port);
- 	    }
-
-            //
-
+            rjm.socket = new WebSocket("wss://"+ip+":"+port);
             rjm.socket.onopen = function() {                
                 resolve();
             };
-            rjm.socket.onerror = function(err) {
+	    rjm.socket.onerror = function(err) => {
+              rjm.socket = new WebSocket("ws://"+ip+":"+port);
+              rjm.socket.onopen = function() {                
+                resolve();
+              };
+              rjm.socket.onerror = function(err) {
+                console.log("If your server is on and configured, and the port is correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site")
                 reject(err);
             };
         }).then(result => rjm.getPosition().then( result => {
