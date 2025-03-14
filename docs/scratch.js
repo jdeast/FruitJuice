@@ -116,7 +116,7 @@ class FruitJuice {
 			},
 			"secure":{
                             "type": "boolean",
-                            "defaultValue": "false"
+                            "defaultValue": false
 			},
                     }
 		},
