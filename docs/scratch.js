@@ -2394,7 +2394,7 @@ class FruitJuice {
 
                 rjm.socket.onerror = function(err) {
                     // If both secure and insecure connections fail, reject the promise
-                    console.log("If your server is on and configured, and the IP and port are correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site.");
+                    window.alert("If your server is on and configured, and the IP and port are correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site.");
                     reject(err); // Reject the promise if both secure and insecure connections fail
                 };
             };
