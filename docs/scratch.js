@@ -2387,12 +2387,19 @@ class FruitJuice {
                 console.log("If your server is on and configured, and the IP and port is correct, you likely need to adjust your browser's security settings to 'allow insecure content' for this site")
                 reject(err);
             };
-        }.then(result => rjm.getPosition().then( result => {
-            rjm.turtle.pos = result;
-        })).then (result => rjm.getRotation().then( result => {
-            rjm.playerRot = result;
+        })
+        .then(() => rjm.getPosition())
+        .then(position => {
+            rjm.turtle.pos = position;
+            return rjm.getRotation();
+        })
+        .then (rotation => {
+            rjm.playerRot = rotation;
             rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
-	}));
+        })
+        .catch(err => {
+            console.error("An error occurred:", err);
+	});
     };
     
     chat({msg}){
