@@ -47,10 +47,13 @@ public class CmdWorld {
 
 			session.send(getBlocks(loc1, loc2));
 
-//			// world.getBlockWithData untested
-//		} else if (c.equals("world.getBlockWithData")) {
-//			Location loc = parseRelativeBlockLocation(args[0], args[1], args[2]);
-//			send(world.getBlockTypeIdAt(loc) + "," + world.getBlockAt(loc).getData());	
+			// world.getBlockData
+		} else if (command.equals("getBlockData")) {
+			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
+			Block thisBlock = world.getBlockAt(loc);
+			BlockData blockData = thisBlock.getBlockData();
+
+			session.send(blockData.toString());
 
 			// world.setBlock
 		} else if (command.equals("setBlock")) {
