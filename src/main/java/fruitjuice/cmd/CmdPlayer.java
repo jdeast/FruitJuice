@@ -1,11 +1,12 @@
-package fruitjuice.cmd;
+package FruitJuice.cmd;
 
-import fruitjuice.RemoteSession;
-import fruitjuice.FruitJuicePlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+
+import FruitJuice.FruitJuicePlugin;
+import FruitJuice.RemoteSession;
 
 public class CmdPlayer {
     private final String preFix = "player.";

@@ -1,4 +1,4 @@
-package fruitjuice;
+package FruitJuice;
 
 import java.io.*;
 import java.net.*;

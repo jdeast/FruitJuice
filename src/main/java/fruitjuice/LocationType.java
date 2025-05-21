@@ -1,4 +1,4 @@
-package fruitjuice;
+package FruitJuice;
 
 /**
  * Config option to determine whether locations are relative to the spawn point (default like pi) or absolute

@@ -1,11 +1,12 @@
-package fruitjuice.cmd;
+package FruitJuice.cmd;
 
-import fruitjuice.FruitJuicePlugin;
-import fruitjuice.RemoteSession;
 import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+
+import FruitJuice.FruitJuicePlugin;
+import FruitJuice.RemoteSession;
 
 public class CmdEntity {
 	private final String preFix = "entity.";

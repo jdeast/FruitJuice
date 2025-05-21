@@ -1,7 +1,5 @@
-package fruitjuice.cmd;
+package FruitJuice.cmd;
 
-import fruitjuice.FruitJuicePlugin;
-import fruitjuice.RemoteSession;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -18,6 +16,9 @@ import org.bukkit.block.data.type.WallSign;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+
+import FruitJuice.FruitJuicePlugin;
+import FruitJuice.RemoteSession;
 
 import java.util.Collection;
 

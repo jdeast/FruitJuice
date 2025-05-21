@@ -1,4 +1,4 @@
-package fruitjuice;
+package FruitJuice;
 
 // import org.bukkit.Material;
 import org.bukkit.block.BlockFace;

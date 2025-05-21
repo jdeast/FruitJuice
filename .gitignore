@@ -65,3 +65,6 @@ target/maven-archiver
 .mvn
 mvnw
 mvnw.cmd
+
+# maven stuff
+target/maven-status

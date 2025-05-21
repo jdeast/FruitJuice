@@ -1,11 +1,12 @@
-package fruitjuice.cmd;
+package FruitJuice.cmd;
 
-import fruitjuice.RemoteSession;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+
+import FruitJuice.RemoteSession;
 
 public class CmdEvent {
     private final String preFix = "events.";

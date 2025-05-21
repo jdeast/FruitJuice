@@ -1,4 +1,4 @@
-package fruitjuice;
+package FruitJuice;
 
 /**
  * Config option to determine whether hit events are triggered by LEFT clicks, RIGHT clicks (like the Pi) or BOTH

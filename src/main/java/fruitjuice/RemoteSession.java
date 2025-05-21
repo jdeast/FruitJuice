@@ -1,9 +1,4 @@
-package fruitjuice;
-
-import fruitjuice.cmd.CmdEntity;
-import fruitjuice.cmd.CmdEvent;
-import fruitjuice.cmd.CmdPlayer;
-import fruitjuice.cmd.CmdWorld;
+package FruitJuice;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -12,6 +7,11 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+
+import FruitJuice.cmd.CmdEntity;
+import FruitJuice.cmd.CmdEvent;
+import FruitJuice.cmd.CmdPlayer;
+import FruitJuice.cmd.CmdWorld;
 
 import java.io.*;
 import java.net.Socket;
