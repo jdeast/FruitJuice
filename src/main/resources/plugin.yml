@@ -1,8 +1,8 @@
-author: [Zhuowei,MinecraftDawn,jdeast]
-database: false
-description: Implementation of the Minecraft Python API
-main: fruitjuice.FruitJuicePlugin
 name: FruitJuice
-startup: postworld
-version: '0.1.0'
+description: A plugin that provides a Python SDK for the Minecraft API.
+author: [Zhuowei,MinecraftDawn,jdeast,mwrowe]
+version: '0.4.0b'
 api-version: 1.13
+main: FruitJuice.FruitJuicePlugin
+database: false
+startup: postworld

@@ -30,7 +30,7 @@ public class CmdEvent {
                 Location loc = block.getLocation();
                 b.append(session.blockLocationToRelative(loc));
                 b.append(",");
-                b.append(session.blockFaceToNotch(event.getBlockFace()));
+                b.append(RemoteSession.blockFaceToNotch(event.getBlockFace()));
                 b.append(",");
                 b.append(event.getPlayer().getEntityId());
                 if (session.interactEventQueue.size() > 0) {

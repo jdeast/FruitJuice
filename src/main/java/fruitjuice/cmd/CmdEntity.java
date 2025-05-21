@@ -26,6 +26,7 @@ public class CmdEntity {
 		if (entity == null) {
 			plugin.getLogger().info("Entity [" + args[0] + "] not found.");
 			session.send("Fail,This entity identity not exist");
+			return;
 		}
 
 		// entity.getTile
