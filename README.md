@@ -24,8 +24,13 @@ and connect it to a Bukkit server running this plugin and a websocket relay.
  
  - world.getBlocks(x1:int, y1:int, z1:int, x2:int, y2:int, z2:int) -> list
    - Get the blocks of the input position range
+
+
+ - world.getBlockData(x:int, y:int, z:int) -> str
+   - Get the state of the block at the input position, including material 
+   (block type) and any other attributes (differ by block type).
  
- 
+
  - world.setBlock(x:int, y:int, z:int, block:str) -> None:
    - Set the block of the input position
  
@@ -223,3 +228,4 @@ mvn package
  - [opticyclic](https://github.com/opticyclic)
  - [timcu](https://www.triptera.com.au/wordpress/)
  - [pxai](https://github.com/pxai)
+ - [mwrowe](https://github.com/mwrowe)

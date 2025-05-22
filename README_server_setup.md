@@ -37,14 +37,14 @@ Note: updates to servers/plugins may require stopping your server, repeating ste
 1. Make sure java is up to date
 
 ```
-java –-version
+java -version
 ```
 
 If this is not 21 or higher, you need to update java. 
 
 See here for more general directions: https://docs.papermc.io/misc/java-install
 
-On the Raspberry Pi, the default repo isn’t good enough. This will install jdk-21 from zulu (thanks https://pimylifeup.com/raspberry-pi-java/, modified to use non-headless as recommended by paper)
+On the Raspberry Pi, the default repo isnï¿½t good enough. This will install jdk-21 from zulu (thanks https://pimylifeup.com/raspberry-pi-java/, modified to use non-headless as recommended by paper)
 
 ```
 sudo apt update
@@ -115,7 +115,7 @@ java -Xmx2048M -Xms2048M -jar paper-1.20-17.jar
 
 13. You can skip this step if you're only connecting locally (from computers all connected to the same router), and not with scratch.
 
-On your router, forward ports 19132 (bedrock), 25565 (java), 4711 (python), 14711 (scratch), 80 (http) and 443 (https) to the same ports on your server (or different port numbers if you’ve changed the defaults). 
+On your router, forward ports 19132 (bedrock), 25565 (java), 4711 (python), 14711 (scratch), 80 (http) and 443 (https) to the same ports on your server (or different port numbers if youï¿½ve changed the defaults). 
 
 Unfortunately, the details depend on the specifics of your router. You can google something like "{router model} + port forwarding", but generally it's something like
 
@@ -232,7 +232,7 @@ https://www.minecraft.net/en-us/download
 		- Select "servers" tab
 		- Click "add server"
 		- Enter whatever you like for "Server name"
-		- Enter the server’s IP for "Server address"
+		- Enter the serverï¿½s IP for "Server address"
 			- For WAN connections, this should be the external IP
 			- For LAN connections, this should be the internal IP
 		- Enter 19132 for the port
@@ -244,7 +244,7 @@ https://www.minecraft.net/en-us/download
 
 https://www.python.org/downloads/
 
-During the installation, be sure to check the box to update your path to include python and pip, or you’ll get "command not found" errors in the next steps
+During the installation, be sure to check the box to update your path to include python and pip, or youï¿½ll get "command not found" errors in the next steps
 
 2. Install [pyncraft](https://github.com/jdeast/pyncraft). In a terminal, type
 

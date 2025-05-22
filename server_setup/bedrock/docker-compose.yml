@@ -1,0 +1,49 @@
+# CONFIGURATION FOR PYCRAFT BEDROCK SERVER -- NOT YET WORKING!!!
+services:
+  # you can launch multiple servers by adding more services, with unique names
+  pycraft-bedrock:
+    image: itzg/minecraft-bedrock-server
+
+    # this lets you connect to the server using ssh
+    tty: true
+    stdin_open: true
+
+    # ports enable communication between the host (left) and container (right)
+    ports:
+      # for game play
+      - "19132:19132/udp"
+      # for FruitJuice plugin
+      # - "4711:4711"
+      # for rcon commands -- note that this must be the same as RCON_PORT below
+      # - "25575:25575"
+
+    # this sets environment variables in the container 
+    environment:
+      EULA: "TRUE"
+      # MEMORY: "4G"
+      # installs the FruitJuice plugin
+      # TYPE: "PAPER"  
+      # version of Minecraft-- check PaperMC/FruitJuice plugin for compatibility
+      VERSION: "LATEST" # "1.21.82.1" #
+      # gameplay settings
+      DIFFICULTY: "normal"
+      GAMEMODE: "creative" # "survival"
+      SERVER_NAME: "pycraft-bedrock"
+      ALLOW_CHEATS: "true"
+      # this gives players admin privileges
+      # put in the UUID of each player (shown when they join the server)
+      # OPS: "cecc18fd-0cb5-432a-xxxx-9fdef5e8007a" 
+
+      # RCON settings
+      # ENABLE_RCON: "true"
+      # RCON_PASSWORD: "aspergers-with-cheese"
+      # RCON_PORT: "25575"
+
+    volumes:
+      # attach the relative directory 'data' to the container's /data path
+      - ./data:/data
+      # attach a plugins subdirectory to load the FruitJuice plugin
+      - ./plugins:/plugins
+
+      # get the latest FruitJuice_*.jar and it add to /plugins subdirectory
+      # https://github.com/jdeast/FruitJuice/tree/master/target 
