@@ -55,6 +55,20 @@ public class CmdWorld {
 //			Location loc = parseRelativeBlockLocation(args[0], args[1], args[2]);
 //			send(world.getBlockTypeIdAt(loc) + "," + world.getBlockAt(loc).getData());	
 
+			// world.getBlockTypes
+		} else if (command.equals("getBlockTypes")) {
+			// The authoritative list of placeable materials for THIS server version.
+			// Clients hardcode a block list that goes stale every release and offers
+			// items you cannot place; this lets them ask instead of guessing.
+			StringBuilder types = new StringBuilder();
+			for (Material m : Material.values()) {
+				if (m.isBlock() && !m.isLegacy()) {
+					if (types.length() > 0) types.append(",");
+					types.append(m.name());
+				}
+			}
+			session.send(types.toString());
+
 			// world.setBlock
 		} else if (command.equals("setBlock")) {
 			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
