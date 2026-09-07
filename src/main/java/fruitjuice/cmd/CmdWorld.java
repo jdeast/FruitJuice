@@ -172,7 +172,7 @@ public class CmdWorld {
 				session.send(p.getEntityId());
 			} else {
 				plugin.getLogger().info("Player [" + args[0] + "] not found.");
-				session.send("Fail," + "T	he player not exist");
+				session.send("Fail,That player is not on the server.");
 			}
 
 			// world.getHeight

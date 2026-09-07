@@ -1,218 +1,124 @@
 # FruitJuice
 
-A Minecraft Bukkit plugin which enables python and/or scratch programming. 
+A Minecraft Bukkit plugin that lets you build in Minecraft from Python or Scratch.
 
-This Bukkit plugin is a successor to RaspberryJuice that implements a Python/Scratch API to vanilla minecraft (not dependent on the raspberry pi edition).
+FruitJuice is a successor to RaspberryJuice. It implements the Minecraft Pi Python/Scratch API against a normal Bukkit/Paper server, so you do not need the Raspberry Pi edition of the game, and it works for both Java and Bedrock players.
 
-See [README_server_setup.md](https://github.com/jdeast/FruitJuice/blob/master/README_server_setup.md) for instructions to set up your own python/scratch server that works on java or bedrock.
+See [README_server_setup.md](https://github.com/jdeast/FruitJuice/blob/master/README_server_setup.md) for step-by-step instructions to set up your own server.
 
-To use Python, you must connect it to a Bukkit server running this plugin, and use the companion [pyncraft](https://github.com/jdeast/pyncraft) library:
+## Quick start
+
+You need a Bukkit/Paper server running this plugin. Then:
+
+**Python.** Install the companion [pyncraft](https://github.com/jdeast/pyncraft) library and point it at the server:
+
+```
 pip install pyncraft
+```
 
-To use scratch, you must use this URL:
-http://pruss.mobi/scratch/?load_plugin=http://cfa.harvard.edu/~jeastman/scratch.js
-and connect it to a Bukkit server running this plugin and a websocket relay.
+```python
+from pyncraft.minecraft import Minecraft
+mc = Minecraft.create("your.server.address", 4711)
+mc.postToChat("hello world!")
+```
+
+**Scratch.** Open this URL, then use the "connect" block to reach your server:
+
+https://jdeast.github.io/FruitJuice/?load_plugin=scratch.js
+
+Scratch talks to the server through a websocket relay rather than directly, so the server also needs websockify and an SSL certificate. That is covered in the setup guide. If your server was set up without a certificate, use `scratch_insecure.js` instead and allow insecure content for the page.
 
 ## Commands
 
-### Commands supported
+These are the commands the plugin itself understands, sent over TCP on port 4711 as `namespace.command(arg,arg,...)` followed by a newline. pyncraft wraps them in Python methods, and the Scratch extension wraps them in blocks; you only need this section if you are writing your own client or debugging one.
 
-#### world
- - world.getBlock(x:int, y:int, z:int) -> str
-   - Get the block of the input position
- 
- 
- - world.getBlocks(x1:int, y1:int, z1:int, x2:int, y2:int, z2:int) -> list
-   - Get the blocks of the input position range
- 
- 
- - world.getBlockData(x:int, y:int, z:int) -> str
-   - Get the full state of the block at the input position: the material plus
-     whatever else applies to that block type, such as which way it faces.
-     For example minecraft:oak_stairs[facing=east,half=bottom,shape=straight].
-     Note the value contains commas inside its brackets, so read the whole
-     string rather than splitting it on commas.
- 
- 
- - world.getBlockTypes() -> list
-   - Get every material this server can actually place. Use this rather than a
-     hardcoded list: it is correct for the server's Minecraft version and
-     leaves out items, like swords, that are not blocks.
- 
- 
- - world.setBlock(x:int, y:int, z:int, block:str) -> None:
-   - Set the block of the input position. Takes an optional facing
-     (NORTH, SOUTH, EAST, WEST, UP, DOWN); omit it to let Minecraft choose.
- 
- 
- - world.setBlocks(x1:int, y1:int, z1:int, x2:int, y2:int, z2:int, block) -> None:
-    - Set the blocks of the input position range
- 
+Anything that returns a value replies with a single line. Anything that fails replies with a line starting `Fail,`.
 
- - world.getHeight(x:int, z:int) -> int:
-    - Get highest position y of the block
-    
-    
- - world.getPlayerEntityIds() -> list:
-    - Get the list of server players'id
-    
-    
- - world.postToChat(*msg) -> None:
-    -Print message to minecraft chat
- 
- 
- - world.setSign(x:int, y:int, z:int, signType:str, signDir:int, line1:str="", line2:str="", line3:str="", line4:str="") -> None:
-    - Set the stand sign of the input position
- 
- 
- - world.setWallSign(x:int, y:int, z:int, signType:str, signDir:int, line1="",line2="",line3="",line4="") -> None:
-    - Set the wall sign of the input position
-    
-    
- - world.spawnEntity(x:int, y:int, z:int, entityID:int) -> int:
-    - Spawn a entity of the input position
- 
- 
- - world.createExplosion(x:int, y:int, z:int, power:int=4) -> None:
-    - Create a explosion of the input position
- 
- 
- - world.getPlayerEntityId(name:str) -> int:
-    - Get the entity ID of input name
- 
- 
- - world.create(address = "localhost", port = 4711):
-    - Connect your python program to Raspberryjuice
-    
+### world
 
- ---
- 
-#### player
- - player.getPos() -> Vec3:
-    - Get player's float position
-    
-    
- - player.setPos(x:float, y:float, z:float) -> None:
-    - Set player's position with float
- 
- 
- - player.getTilePos() -> Vec3:
-    - Get player's integer position
- 
- - player.setTilePos(x:int, y:int, z:int) -> None:
-    -Set player's integer position
- 
- 
- - player.getDirection() -> Vec3:
-    - Get player's direction
- 
- 
- - player.setDirection(x:float, y:float, z:float) -> None:
-    - Set player's direction
-    
- 
- - player.getRotation() -> float:
-    - Get player's rotation
-    
- 
- - player.setRotation(yaw:float) -> None:
-    - Set player's rotation
- 
- 
- - player.getPitch() -> float:
-    - Get player's pitch
- 
- 
- - player.setPitch(pitch) -> None:
-     - Set player's pitch
- 
- 
- - player.getFoodLevel() -> int:
-    - Get player's food level
-    
-    
-- player.setFoodLevel(foodLevel:int) -> None:
-    - Set player's food level
-    
-    
-- player.getHealth() -> float:
-    - Get player's health
-    
-    
-- player.setHealth(health:float) -> None:
-    - Set player's health
- 
- 
- - player.sendTitle(title:str, subTitle:str="", fadeIn:int=10, stay:int=70, fadeOut:int=20) -> None:
-    - Send a title to player
- 
- ---
- 
-#### entity
- - entity.getPos(ID) -> Vec3:
-    - Get specific entity's float position
-    
-    
- - entity.setPos(ID, x:float, y:float, z:float) -> None:
-    - Set specific entity's position with float
- 
- 
- - entity.getTilePos(ID) -> Vec3:
-    - Get specific entity's integer position
- 
- 
- - entity.setTilePos(ID, x:int, y:int, z:int) -> None:
-    - Set specific entity's position with integer
- 
- 
- - entity.getDirection(ID) -> Vec3:
-    - Get specific entity's direction
- 
- 
- - entity.setDirection(ID, x:float, y:float, z:float) -> None:
-    - Set specific entity's direction
- 
- 
- - entity.getRotation(ID) -> float:
-    - Get specific entity's rotation
- 
- 
- - entity.setRotation(ID, yaw) -> float:
-    - Set specific entity's rotation
-    
- 
- - entity.getPitch(ID) -> float:
-    - Get specific entity's pitch
- 
- 
- - entity.setPitch(ID, pitch) -> None:
-    - Set specific entity's pitch
- 
- 
- - entity.getName(ID):
-    -  Get specific entity's name
+ - `world.getBlock(x, y, z)` -> material name, e.g. `OAK_STAIRS`
+ - `world.getBlockData(x, y, z)` -> the block's full state, e.g. `minecraft:oak_stairs[facing=east,half=bottom,shape=straight,waterlogged=false]`. Note this value contains commas inside its brackets, so read the whole line rather than splitting it on commas.
+ - `world.getBlocks(x1, y1, z1, x2, y2, z2)` -> comma-separated material names for the whole cuboid
+ - `world.getBlockTypes()` -> comma-separated list of every material this server can actually place. Correct for the server's Minecraft version, and excludes items that are not blocks. Prefer this to a hardcoded list.
+ - `world.setBlock(x, y, z, block)` -> none. Takes two further optional arguments: a facing (`NORTH`, `SOUTH`, `EAST`, `WEST`, `UP`, `DOWN`) and an attached face (`WALL`, `FLOOR`, `CEILING`). Omit them to let Minecraft choose. Beds, doors and tall plants automatically fill both of the blocks they occupy.
+ - `world.setBlocks(x1, y1, z1, x2, y2, z2, block)` -> none. Fills a cuboid. Does not take a facing.
+ - `world.getHeight(x, z)` -> y of the highest block at that column
+ - `world.getPlayerIds()` -> entity ids of everyone online, separated by `|`
+ - `world.getPlayerId(name)` -> that player's entity id
+ - `world.getEntityTypes()` -> spawnable entity types as `id,NAME` pairs separated by `|`
+ - `world.spawnEntity(x, y, z, entityTypeId)` -> the new entity's id
+ - `world.createExplosion(x, y, z, power)` -> none
+ - `world.setSign(x, y, z, signType, facing, line1, line2, line3, line4)` -> none. `signType` is a material such as `OAK_SIGN`; `facing` is a direction name, not a number.
+ - `world.setWallSign(x, y, z, signType, facing, line1, line2, line3, line4)` -> none
 
-### Commands that can't be supported
+### player
 
- - Camera angles
- 
+Every command below takes an **optional** entity id as its first argument, naming which player to act on. Send it and the command applies to that player; leave it out and it applies to the player the session is attached to. pyncraft sends it when you pass a `playerName` to `Minecraft.create()`; Scratch never sends it.
+
+So `player.getPos()` and `player.getPos(42)` are both valid, as are `player.setPos(10,64,20)` and `player.setPos(42,10,64,20)`.
+
+ - `player.getPos()` / `player.setPos(x, y, z)` -> float position
+ - `player.getTile()` / `player.setTile(x, y, z)` -> integer block position
+ - `player.getAbsPos()` / `player.setAbsPos(x, y, z)` -> position ignoring the `location` config setting
+ - `player.getDirection()` / `player.setDirection(x, y, z)` -> the direction the player faces, as a vector
+ - `player.getRotation()` / `player.setRotation(yaw)` -> yaw in degrees
+ - `player.getPitch()` / `player.setPitch(pitch)` -> pitch in degrees
+ - `player.getFoodLevel()` / `player.setFoodLevel(level)`
+ - `player.getHealth()` / `player.setHealth(health)`
+ - `player.sendTitle(title, subtitle, fadeIn, stay, fadeOut)` -> none
+ - `player.setPlayer(name)` -> none. Attaches this session to a named player.
+
+### entity
+
+The same positional commands, but the entity id is required rather than optional.
+
+ - `entity.getPos(id)` / `entity.setPos(id, x, y, z)`
+ - `entity.getTile(id)` / `entity.setTile(id, x, y, z)`
+ - `entity.getDirection(id)` / `entity.setDirection(id, x, y, z)`
+ - `entity.getRotation(id)` / `entity.setRotation(id, yaw)`
+ - `entity.getPitch(id)` / `entity.setPitch(id, pitch)`
+ - `entity.getName(id)` -> the entity's name
+
+### events
+
+ - `events.block.hits()` -> blocks hit since the last poll, one per line entry
+ - `events.chat.posts()` -> chat messages since the last poll
+ - `events.arrow.hits()` -> arrow hits since the last poll
+ - `events.clear()` -> discard anything queued
+
+Which mouse button counts as a "hit" is set by `hitclick` in the config.
+
+### chat
+
+ - `chat.post(message)` -> broadcasts the message to everyone on the server
+
+### Not implemented
+
+pyncraft still has methods for these, and they will come back `Fail,... is not supported`:
+
+ - `camera.*` -- camera angles cannot be controlled through the Bukkit API
+ - `world.checkpoint.save` and `world.checkpoint.restore`
+ - `world.setting`
+ - `world.getBlockWithData` -- superseded by `world.getBlockData`
+
 ## Config
 
-Modify config.yml:
+Edit `config.yml` in the plugin's folder:
 
- - port: 4711 - the default tcp port can be changed in config.yml
- - location: ABSOLUTE - determine whether locations are RELATIVE to the spawn point or ABSOLUTE
- - hitclick: RIGHT - determine whether hit events are triggered by LEFT clicks, RIGHT clicks or BOTH 
+ - `port: 4711` -- the TCP port the plugin listens on
+ - `hostname:` -- which address to accept connections from. Blank means any (`0.0.0.0`); `localhost` would refuse remote clients.
+ - `location: ABSOLUTE` -- whether coordinates are ABSOLUTE or RELATIVE to the world spawn point
+ - `hitclick: LEFT` -- whether hit events come from LEFT clicks, RIGHT clicks or BOTH
 
-## Build
+Note that port 4711 has **no authentication of any kind**. Anyone who can reach it can edit your world and move players. Think carefully before forwarding it through your router.
 
-### From jar file
+## Install
 
-download the latest FruitJuice jar from https://github.com/jdeast/FruitJuice/releases/latest and copy it to your plugin directory
+Download the latest jar from the [releases page](https://github.com/jdeast/FruitJuice/releases/latest) and copy it into your server's `plugins` directory, then restart the server.
 
-### From Source
+## Build from source
 
-To build FruitJuice, [download and install Maven](https://maven.apache.org/install.html), clone the repository, run `mvn package':
+[Install Maven](https://maven.apache.org/install.html), then:
 
 ```
 git clone https://github.com/jdeast/FruitJuice
@@ -220,23 +126,20 @@ cd FruitJuice
 mvn package
 ```
 
+The jar lands in `target/`.
+
 ## Version history
 
  - 0.1.0 - Initial release
  - 0.2.0 - Updates from integer block IDs to string block IDs broke the way directional blocks work. Partial fix.
  - 0.3.0 - [minecraftdawn]'s refactoring of cmdPlayer broke player selection implemented in mcpi_e. Fixed.
- - 0.4.0 - Fixed player selection by entity id, which silently drove the wrong player and
-   corrupted coordinates. Beds, doors and tall plants now place as the two blocks they are.
-   Blocks can be given a facing, and no longer default to WEST. Added world.getBlockData and
-   world.getBlockTypes, so the scratch block list comes from the server instead of a hardcoded
-   list that went stale every release. Note plugin.yml had reported 0.1.0 since 0.1.0; it now
-   matches.
+ - 0.4.0 - Player selection by entity id, which had been driving the wrong player and corrupting coordinates. Beds, doors and tall plants now place as the two blocks they really are. Blocks take an optional facing and no longer all default to WEST. New `world.getBlockData` and `world.getBlockTypes`, so the Scratch block list comes from the server rather than a hardcoded list that went stale each release. `plugin.yml` had reported version 0.1.0 since 0.1.0; it now matches.
 
 ## Contributors
 
  - [jdeast](https://github.com/jdeast)
  - [stoneskin](https://github.com/stoneskin) (pyncraft/mcpi_e)
- - [apruss](https://github.com/arpruss) (scratch)
+ - [arpruss](https://github.com/arpruss) (scratch)
  - [minecraftdawn](https://github.com/minecraftdawn)
  - [d4g33z](https://github.com/d4g33z) (player id handling)
  - [mwrowe](https://github.com/mwrowe) (block data, docker setup)
