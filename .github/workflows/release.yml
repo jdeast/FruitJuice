@@ -38,6 +38,15 @@ jobs:
       checks: write
       issues: write
 
+  # Hangar goes out only after the GitHub release exists, and takes the jar
+  # from it, so the two can never disagree about what 0.5.1 is.
+  hangar:
+    needs: [release]
+    uses: ./.github/workflows/hangar.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
+
   release:
     needs: [build]
     runs-on: ubuntu-latest

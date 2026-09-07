@@ -22,13 +22,29 @@ name: Publish to Hangar
 #   Until that secret exists this workflow is skipped rather than failed, so a
 #   release is never held up by it.
 
+# NOT triggered by `release: published`, which is the obvious way and does not
+# work: GitHub deliberately does not start workflows from events raised by the
+# default GITHUB_TOKEN, to stop a workflow triggering itself forever. Our
+# releases are created by release.yml using that token, so the release event
+# never reaches anything. It fails silently -- the release publishes, and this
+# simply never runs.
+#
+# So release.yml calls this directly instead, which also keeps the ordering
+# explicit: nothing reaches Hangar until the GitHub release exists.
 on:
-  release:
-    types: [published]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to publish, e.g. v0.5.1"
+        required: true
+        type: string
+    secrets:
+      HANGAR_API_TOKEN:
+        required: false
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing release tag to publish to Hangar, e.g. v0.5.0"
+        description: "Existing release tag to publish to Hangar, e.g. v0.5.1"
         required: true
 
 jobs:
@@ -96,12 +112,22 @@ jobs:
         id: rel
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           # Hangar wants the bare version; our tags are v-prefixed.
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+          # The release notes, read back from the release rather than taken
+          # from the event payload -- there is no event payload here, and a
+          # version published to Hangar with an empty changelog is worse than
+          # useless to somebody deciding whether to upgrade.
+          gh release view "$TAG" --repo "${{ github.repository }}" \
+             --json body --jq .body > notes.md
+          echo "notes<<HANGAR_EOF" >> "$GITHUB_OUTPUT"
+          cat notes.md >> "$GITHUB_OUTPUT"
+          echo "HANGAR_EOF" >> "$GITHUB_OUTPUT"
 
       # The jar from the GitHub release, not a fresh build. Same bytes people
       # downloaded there.
@@ -140,7 +166,7 @@ jobs:
           slug: FruitJuice
           version: ${{ steps.rel.outputs.version }}
           channel: Release
-          description: ${{ github.event.release.body }}
+          description: ${{ steps.rel.outputs.notes }}
           files: |
             [
               {
