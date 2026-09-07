@@ -168,7 +168,7 @@ curl ipinfo.io/ip
 
 duckdns.org can also update this for you automatically if your ISP changes your IP.
 
-IMPORTANT: whatever name you pick here is the name users must type into the scratch connect block, character for character. The certificate is only valid for the exact name(s) it was issued for. If your certificate says `minecraftscratch.duckdns.org` and a user types `mcscratch.duckdns.org`, the browser rejects the connection and scratch fails silently, even though both names point at the same server. If you want two names to work, pass both to certbot with two `-d` flags.
+IMPORTANT: whatever name you pick here is the name users must type into the scratch connect block, character for character. The certificate is only valid for the exact name(s) it was issued for. If your certificate was issued for `MY_MINECRAFT_SERVER.duckdns.org` and a user types any other name, the browser rejects the connection and scratch fails silently, even if both names point at the same server. If you want two names to work, pass both to certbot with two `-d` flags.
 
 b) Generate the SSL certificate. There are two ways; the DNS challenge is recommended because it does not require opening any ports.
 
