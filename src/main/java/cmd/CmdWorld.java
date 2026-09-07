@@ -10,10 +10,14 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.FaceAttachable;
 
 import org.bukkit.block.Sign;
+import org.bukkit.block.data.type.Bed;
+import org.bukkit.block.data.type.Stairs;
+import org.bukkit.block.data.type.TrapDoor;
 import org.bukkit.block.data.type.WallSign;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -55,42 +59,62 @@ public class CmdWorld {
 		} else if (command.equals("setBlock")) {
 			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
 			Block thisBlock = world.getBlockAt(loc);
-			thisBlock.setType(Material.valueOf(args[3]));
+			Material material = Material.valueOf(args[3]);
 
-			BlockData blockData = thisBlock.getBlockData();
+			// Build the data up front so a two-block shape can be checked for room
+			// before anything is written to the world.
+			BlockData blockData = material.createBlockData();
 
-
-/*
-https://www.spigotmc.org/threads/how-to-place-a-bed-in-1-15.414267/
-        	if (Tag.BEDS.isTagged(blockData.material.getMaterial())) {
-            	BlockFace facing = LocationUtil.getFacing(locations.get(0), locations.get(1));
-            	Block bedHeadBlock = locations.get(1).getBlock();
-            	System.out.println(material.getMaterial().name());
-            	blocks.addAll(setBed(bedHeadBlock, facing, material.getMaterial()));
-        	}
-*/
-
-			if (blockData instanceof Directional) {
-				// set the default direction to WEST
-				String dir="WEST";
-				if (args.length >= 5) {
-					dir = args[4];
-				}
- 				((Directional) blockData).setFacing(BlockFace.valueOf(dir));
+			// Only override the facing when the caller actually asked for one.
+			// Defaulting to WEST here made every directional block placed from
+			// scratch -- which sends no direction at all -- come out facing west.
+			if (blockData instanceof Directional && args.length >= 5) {
+				((Directional) blockData).setFacing(BlockFace.valueOf(args[4]));
 			}
-			if (blockData instanceof FaceAttachable) {
-				// set the default face to 
-				String face="WALL";
-				if (args.length >= 6) {
-					face = args[5];
-				}
-				((FaceAttachable) blockData).setAttachedFace(FaceAttachable.AttachedFace.valueOf(face));
+			if (blockData instanceof FaceAttachable && args.length >= 6) {
+				((FaceAttachable) blockData).setAttachedFace(FaceAttachable.AttachedFace.valueOf(args[5]));
 			}
 
+			// Every write below skips physics. Half a bed, or half a door, is not
+			// a legal structure on its own, so with physics on the game removes the
+			// first half before the second one has been placed.
+			if (blockData instanceof Bed) {
+				// A bed is two blocks: the foot goes where it was asked for, and the
+				// head one step along the direction the bed faces.
+				Bed foot = (Bed) blockData;
+				foot.setPart(Bed.Part.FOOT);
 
-			thisBlock.setBlockData(blockData);
+				Bed head = (Bed) foot.clone();
+				head.setPart(Bed.Part.HEAD);
 
-			//updateBlock(world, loc, args[3]);
+				thisBlock.setBlockData(foot, false);
+				thisBlock.getRelative(foot.getFacing()).setBlockData(head, false);
+
+			} else if (blockData instanceof Bisected
+					&& !(blockData instanceof Stairs)
+					&& !(blockData instanceof TrapDoor)) {
+				// Doors, tall flowers and the like fill the block above as well.
+				// Stairs and trapdoors are Bisected too, but they are single blocks:
+				// their half only records which way up they sit.
+				Block topBlock = thisBlock.getRelative(BlockFace.UP);
+				if (topBlock.getY() >= world.getMaxHeight()) {
+					session.send("Fail,No room above " + loc.getBlockX() + "," + loc.getBlockY()
+							+ "," + loc.getBlockZ() + " for the top half of " + material.name());
+					return;
+				}
+
+				Bisected bottom = (Bisected) blockData;
+				bottom.setHalf(Bisected.Half.BOTTOM);
+
+				Bisected top = (Bisected) bottom.clone();
+				top.setHalf(Bisected.Half.TOP);
+
+				thisBlock.setBlockData(bottom, false);
+				topBlock.setBlockData(top, false);
+
+			} else {
+				thisBlock.setBlockData(blockData, false);
+			}
 
 			// world.setBlocks
 		} else if (command.equals("setBlocks")) {
