@@ -107,7 +107,7 @@ class RaspberryJamMod {
                     "arguments": {
                         "ip": {
                             "type": "string",
-                            "defaultValue": "192.168.1.239"
+                            "defaultValue": "localhost"
                         },
             "port":{
                             "type": "string",
@@ -2252,28 +2252,83 @@ class RaspberryJamMod {
         return mode != 0 ? ""+pos[0]+","+pos[1]+","+pos[2] : ""+Math.floor(pos[0])+","+Math.floor(pos[1])+","+Math.floor(pos[2]);
     };
 
-    connect_p({ip,port}){
-        this.ip = ip;
-        this.port = port;
+    // Opens a websocket, retrying a few times before giving up.
+    //
+    // A browser WebSocket has no connect timeout of its own. If DNS is slow to
+    // answer or the SYN is dropped, onerror never fires, so the green flag just
+    // spins forever with nothing in the console. The timeout below turns that
+    // silent hang into a retry, and then into a message the user can act on.
+    //
+    // Note we always connect by name, never by a resolved address: the server's
+    // certificate lists its hostname, so connecting to a raw IP fails hostname
+    // verification even when the address is correct.
+    openSocket_p(url, attempt) {
         var rjm = this;
+        var ATTEMPTS = 3;
+        var TIMEOUT_MS = 8000;
+        attempt = attempt || 1;
+
         return new Promise(function(resolve, reject) {
             if (rjm.socket != null)
                 rjm.socket.close();
 
             rjm.clear();
-            rjm.socket = new WebSocket("ws://"+ip+":"+port);
-            rjm.socket.onopen = function() {                
+            var socket = new WebSocket(url);
+            rjm.socket = socket;
+
+            var settled = false;
+            var timer = setTimeout(function() {
+                if (settled) return;
+                settled = true;
+                socket.onopen = null;
+                socket.onerror = null;
+                socket.close();
+                reject(new Error('timed out after ' + (TIMEOUT_MS / 1000) + 's'));
+            }, TIMEOUT_MS);
+
+            socket.onopen = function() {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
                 resolve();
             };
-            rjm.socket.onerror = function(err) {
+            socket.onerror = function(err) {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
                 reject(err);
             };
-        }).then(result => rjm.getPosition().then( result => {
-            rjm.turtle.pos = result;
-        })).then (result => rjm.getRotation().then( result => {
-            rjm.playerRot = result;
-            rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
-        }));
+        }).catch(function(err) {
+            if (attempt < ATTEMPTS) {
+                var delay = 1000 * attempt;
+                console.warn('FruitJuice: attempt ' + attempt + ' to reach ' + url +
+                             ' failed; retrying in ' + (delay / 1000) + 's', err);
+                return new Promise(function(again) { setTimeout(again, delay); })
+                    .then(function() { return rjm.openSocket_p(url, attempt + 1); });
+            }
+
+            var hint = url.indexOf('ws://') === 0
+                ? ' Because this is an insecure connection, you may also need to allow "insecure content" for this page in your browser settings.'
+                : " If the name and port are right, the server's certificate may not cover this exact name -- check it with whoever runs the server.";
+            var msg = 'Could not connect to ' + url + ' after ' + ATTEMPTS + ' tries. ' +
+                      'Check that the server name and port are spelled correctly and that the server is running.' + hint;
+            console.error('FruitJuice: ' + msg, err);
+            window.alert(msg);
+            throw err;
+        });
+    };
+    connect_p({ip,port}){
+        this.ip = ip;
+        this.port = port;
+
+        var rjm = this;
+        return this.openSocket_p("ws://"+ip+":"+port)
+            .then(result => rjm.getPosition().then( result => {
+                rjm.turtle.pos = result;
+            })).then (result => rjm.getRotation().then( result => {
+                rjm.playerRot = result;
+                rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
+            }));
     };
     
     chat({msg}){
