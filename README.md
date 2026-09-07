@@ -26,8 +26,23 @@ and connect it to a Bukkit server running this plugin and a websocket relay.
    - Get the blocks of the input position range
  
  
+ - world.getBlockData(x:int, y:int, z:int) -> str
+   - Get the full state of the block at the input position: the material plus
+     whatever else applies to that block type, such as which way it faces.
+     For example minecraft:oak_stairs[facing=east,half=bottom,shape=straight].
+     Note the value contains commas inside its brackets, so read the whole
+     string rather than splitting it on commas.
+ 
+ 
+ - world.getBlockTypes() -> list
+   - Get every material this server can actually place. Use this rather than a
+     hardcoded list: it is correct for the server's Minecraft version and
+     leaves out items, like swords, that are not blocks.
+ 
+ 
  - world.setBlock(x:int, y:int, z:int, block:str) -> None:
-   - Set the block of the input position
+   - Set the block of the input position. Takes an optional facing
+     (NORTH, SOUTH, EAST, WEST, UP, DOWN); omit it to let Minecraft choose.
  
  
  - world.setBlocks(x1:int, y1:int, z1:int, x2:int, y2:int, z2:int, block) -> None:
@@ -218,6 +233,7 @@ mvn package
  - [apruss](https://github.com/arpruss) (scratch)
  - [minecraftdawn](https://github.com/minecraftdawn)
  - [d4g33z](https://github.com/d4g33z) (player id handling)
+ - [mwrowe](https://github.com/mwrowe) (block data, docker setup)
  - [zhuowei](https://github.com/zhuowei)
  - [martinohanlon](https://github.com/martinohanlon)
  - [jclaggett](https://github.com/jclaggett)

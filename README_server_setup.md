@@ -29,6 +29,8 @@ These could be done on 4 different computers across the world or all on the same
 
 # Setting up the server 
 
+Three ways to do this. The Mac/Linux instructions install everything by hand and are the most work but the least magic. The Docker instructions further down are easier and work on any operating system, at the cost of learning a little Docker.
+
 ## Mac/Linux
 
 Note: updates to servers/plugins may require stopping your server, repeating steps 1-4 and 10-12, and re-starting the server. Backup your worlds and your jar files before updating.
@@ -290,6 +292,96 @@ https://help.minecraft.net/hc/en-us/articles/360058525452-How-to-Setup-a-Minecra
 Then continue with step 7 in linux directions. The websockify step will be different.
 
 Try using windows powershell, which should be fairly unix-like. If you'd like to contribute more detailed directions, please email me.
+
+## Docker (any OS)
+
+Thanks to [mwrowe](https://github.com/mwrowe) for working this out.
+
+Docker runs the whole server inside a "container": an isolated bundle that already has the right Java and the right Paper version inside it, using your computer's resources but unable to touch anything you have not explicitly shared with it. When you are done you shut it down and delete it, and your system is exactly as it was. That makes it a much gentler path than steps 1-12 above, and it works the same on Mac, Linux and Windows.
+
+You still need steps 13 and 16-17 above if you want scratch, because the SSL certificate and the websocket relay live outside the container. Skip the rest.
+
+1. Install Docker Desktop from https://www.docker.com/products/docker-desktop/ and start it.
+
+2. Make a folder for your server with two subfolders inside it:
+
+```
+mkdir -p ~/minecraft-server/data ~/minecraft-server/plugins
+```
+
+`data` is where your worlds and configs will live; `plugins` is where the plugin jars go. Both survive the container being deleted, so this is what you back up.
+
+3. Put FruitJuice-0.3.0.jar into the `plugins` folder. Get it from https://github.com/jdeast/FruitJuice/tree/master/target
+
+If you want players on older or newer Minecraft versions to be able to connect, also drop ViaVersion.jar in there from https://hangar.papermc.io/ViaVersion/ViaVersion
+
+4. Save this as `docker-compose.yml` in `~/minecraft-server`:
+
+```yaml
+services:
+  fruitjuice:
+    image: itzg/minecraft-server
+    tty: true
+    stdin_open: true
+
+    ports:
+      - "25565:25565"        # java edition gameplay
+      - "19132:19132/udp"    # bedrock edition, via geyser
+      - "4711:4711"          # FruitJuice, for python and for websockify
+      - "25575:25575"        # rcon, optional; must match RCON_PORT below
+
+    environment:
+      EULA: "TRUE"           # https://www.minecraft.net/en-us/eula
+      TYPE: "PAPER"
+      VERSION: "1.20.6"      # keep this close to what FruitJuice was built against
+      MEMORY: "2G"           # raise it if your machine can spare more
+
+      DIFFICULTY: "normal"
+      MODE: "creative"
+      SERVER_NAME: "FruitJuice"
+      ALLOW_CHEATS: "true"
+      OPS: "${OPS_PLAYERS}"  # comma separated, these players get admin powers
+
+      # bedrock edition support, downloaded automatically
+      PLUGINS: |
+        https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot
+        https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot
+
+      # remote console, so you can type server commands without being in the game
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "${RCON_PASSWORD}"
+      RCON_PORT: "25575"
+
+    volumes:
+      - ./data:/data
+      - ./plugins:/plugins
+```
+
+Note there is no port 14711 here even though that is the scratch port. Websockify runs on your computer rather than inside the container, and reaches FruitJuice through the 4711 mapping above. See step 16.
+
+5. The compose file expects two values that are deliberately not written into it. Put them in a file named `.env` in the same folder:
+
+```
+OPS_PLAYERS=your_minecraft_username
+RCON_PASSWORD=pick-something-long-and-not-reused
+```
+
+Never commit that file anywhere. Anyone with the RCON password can run any command on your server.
+
+6. Start it:
+
+```
+cd ~/minecraft-server
+docker compose up
+```
+
+The first run downloads the image and builds the world, so it takes a while. Watch the output for errors. Add `-d` to run it in the background instead.
+
+To stop it, press control-C in that terminal, which kicks off anyone playing. If you started it with `-d`, use `docker compose down` from the same folder instead.
+
+7. Connect from Minecraft as usual. Use `localhost:25565` if you are playing on the same computer that is running Docker, or the host computer's IP address if not. Bedrock players use port 19132.
+
+SECURITY NOTE: the same warning as step 13 applies, and more so. Port 4711 has no authentication of any kind, and RCON has one password between a stranger and total control of your server. Do not forward either of them from your router unless you have thought hard about it.
 
 # Normal Multi-player
 
