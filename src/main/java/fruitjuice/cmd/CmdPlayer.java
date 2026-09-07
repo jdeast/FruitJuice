@@ -107,33 +107,46 @@ public class CmdPlayer {
 		ARG_COUNTS.put("sendTitle", 5);
 		ARG_COUNTS.put("addForce", 3);
 	}
+	/**
+	 * A no-argument call parses to a single empty string, not an empty array.
+	 * Scratch and older pyncraft both send that shape and must keep working.
+	 */
+	public static String[] normaliseArgs(String[] args) {
+		return (args.length == 1 && args[0].isEmpty()) ? new String[0] : args;
+	}
+
+	/**
+	 * The entity id a player command was addressed to, or null when none was sent.
+	 *
+	 * args[0] counts as an id only when the command received exactly one more
+	 * argument than it takes and that argument parses as an integer. pyncraft
+	 * prepends the id when Minecraft.create() was given a playerName; scratch and
+	 * the default pyncraft path send none, and both have to keep working.
+	 */
+	public static Integer leadingPlayerId(String command, String[] args) {
+		Integer expected = ARG_COUNTS.get(command);
+		if (expected == null || args.length != expected + 1) return null;
+		try {
+			return Integer.valueOf(args[0].trim());
+		} catch (NumberFormatException notAnId) {
+			return null;
+		}
+	}
+
     public void execute(String command, String[] args) {
 
-		// A no-argument call like "player.getPos()" parses to a single empty
-		// string rather than an empty array, so normalise that first.
-		if (args.length == 1 && args[0].isEmpty()) {
-			args = new String[0];
-		}
+		args = normaliseArgs(args);
 
-		// If we got exactly one argument more than the command needs, the first
-		// one is the entity ID of the player to act on. Anything else keeps the
-		// historical behaviour, so existing scratch and pyncraft code is unaffected.
 		Player currentPlayer = null;
-		Integer expected = ARG_COUNTS.get(command);
-		if (expected != null && args.length == expected + 1) {
-			try {
-				currentPlayer = getPlayerById(Integer.parseInt(args[0].trim()));
-				if (currentPlayer == null) {
-					session.send("Fail,No player found with ID: " + args[0]);
-					return;
-				}
-				attachedPlayer = currentPlayer;
-				args = Arrays.copyOfRange(args, 1, args.length);
-			} catch (NumberFormatException e) {
-				// Not an ID after all; fall through rather than rejecting a
-				// command that used to work.
-				currentPlayer = null;
+		Integer playerId = leadingPlayerId(command, args);
+		if (playerId != null) {
+			currentPlayer = getPlayerById(playerId);
+			if (currentPlayer == null) {
+				session.send("Fail,No player found with ID: " + args[0]);
+				return;
 			}
+			attachedPlayer = currentPlayer;
+			args = Arrays.copyOfRange(args, 1, args.length);
 		}
 
 		if (currentPlayer == null) {

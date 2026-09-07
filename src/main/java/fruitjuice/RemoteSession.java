@@ -177,20 +177,14 @@ public class RemoteSession {
 
         if (line.isEmpty()) return;
 
-        // Validate before parsing. This used to be an unguarded substring() that
-        // threw on any line without a bracket -- a port scanner, a stray newline --
-        // and the throw escaped before handleCommand could answer, so the client
-        // waited forever for a reply that was never sent.
-        int open = line.indexOf("(");
-        if (open < 0 || !line.endsWith(")")) {
+        CommandLine parsed = CommandLine.parse(line);
+        if (parsed == null) {
             plugin.getLogger().warning("Ignoring malformed command: " + line);
             send("Fail,Malformed command. Expected name(arguments), got: " + line);
             return;
         }
 
-        String methodName = line.substring(0, open);
-        String[] args = line.substring(open + 1, line.length() - 1).split(",");
-        handleCommand(methodName, args);
+        handleCommand(parsed.name, parsed.args);
     }
 
     protected void handleCommand(String c, String[] args) {
@@ -228,7 +222,7 @@ public class RemoteSession {
                 // the message back exactly. Joining with a space used to turn
                 // "Hello, world!" into "Hello  world!" and made it impossible to
                 // put a comma in chat at all.
-                String chatMessage = String.join(",", args);
+                String chatMessage = String.join(",", args);   // see CommandLine.rawArguments
                 server.broadcastMessage(chatMessage);
 
                 // not a command which is supported
@@ -245,13 +239,21 @@ public class RemoteSession {
         }
     }
 
+    /**
+     * Floor a coordinate to a block coordinate.
+     *
+     * Floor, not a cast. Casting truncates toward zero, so -0.5 gave block 0
+     * rather than block -1 and everything at a negative fractional coordinate
+     * addressed the block next door.
+     */
+    public static int toBlockCoordinate(String coordinate) {
+        return (int) Math.floor(Double.parseDouble(coordinate));
+    }
+
     public Location parseRelativeBlockLocation(String xstr, String ystr, String zstr) {
-        // floor, not a cast. Casting truncates toward zero, so -0.5 became block 0
-        // rather than block -1 and everything at a negative fractional coordinate
-        // addressed the wrong block.
-        int x = (int) Math.floor(Double.parseDouble(xstr));
-        int y = (int) Math.floor(Double.parseDouble(ystr));
-        int z = (int) Math.floor(Double.parseDouble(zstr));
+        int x = toBlockCoordinate(xstr);
+        int y = toBlockCoordinate(ystr);
+        int z = toBlockCoordinate(zstr);
         return parseLocation(origin.getWorld(), x, y, z, origin.getBlockX(), origin.getBlockY(), origin.getBlockZ());
     }
 
