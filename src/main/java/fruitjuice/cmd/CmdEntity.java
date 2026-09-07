@@ -103,6 +103,31 @@ public class CmdEntity {
 		} else if (command.equals("getPitch")) {
 			session.send(entity.getLocation().getPitch());
 
+			// entity.remove
+		} else if (command.equals("remove")) {
+			// The counterpart to world.spawnEntity, which hands back the id
+			// this takes. Without it anything spawned was permanent, so a
+			// script that spawned in a loop left the world full of animals and
+			// the only way to tidy up was a command block or an op.
+			if (entity instanceof Player) {
+				// Entity.remove() is documented to do nothing on a player, so
+				// without this the command would report success and silently
+				// change nothing. Saying so is more use than a quiet no-op,
+				// and removing a player is not what anyone means anyway.
+				session.send("Fail,Cannot remove a player. Entity " + args[0] +
+						" is " + ((Player) entity).getName() + ".");
+				return;
+			}
+			int removedId = entity.getEntityId();
+			entity.remove();
+			// Answers rather than staying silent like the other setters. The
+			// guard at the top of this method already replies when the id is
+			// unknown, so a silent success would mean the client could not tell
+			// "removed" from "there was nothing there" without the reply
+			// counts differing between the two -- which is how a session ends
+			// up one reply out of step.
+			session.send(removedId);
+
 			// entity.getListName
 		} else if (command.equals("getName")) {
 			if (entity instanceof Player) {

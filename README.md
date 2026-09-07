@@ -93,6 +93,7 @@ The same positional commands, but the entity id is required rather than optional
  - `entity.getRotation(id)` / `entity.setRotation(id, yaw)`
  - `entity.getPitch(id)` / `entity.setPitch(id, pitch)`
  - `entity.addForce(id, x, y, z)` -> none. Adds to the entity's velocity.
+ - `entity.remove(id)` -> the id that was removed. Deletes the entity, undoing a `world.spawnEntity`. Replies `Fail,` if there is no such entity, or if the id belongs to a player -- Minecraft ignores a remove on a player, so this says so rather than reporting a success that changed nothing.
  - `entity.getName(id)` -> the entity's name
 
 ### events
