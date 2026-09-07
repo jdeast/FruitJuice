@@ -62,6 +62,12 @@ tags
 .idea/modules.xml
 target/classes
 target/maven-archiver
+target/maven-status
 .mvn
 mvnw
 mvnw.cmd
+
+# Server config -- holds RCON_PASS and OPS_PLAYERS, so it must never be
+# committed. Ship a .env.example with empty placeholders instead.
+.env
+*/.env
