@@ -35,7 +35,7 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.20-R0.1-SNAPSHOT</version>
+            <version>${spigot.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -62,6 +62,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- A property so CI can build against a newer API without editing the pom:
+         mvn -Dspigot.version=1.21-R0.1-SNAPSHOT. The nightly job uses that to
+         find out that a Minecraft release broke us before a user does. -->
+    <spigot.version>1.20-R0.1-SNAPSHOT</spigot.version>
   </properties>
 
 </project>

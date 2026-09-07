@@ -1,23 +1,32 @@
 name: Build
 
-# Compiles the plugin and runs the unit tests on every push and pull request.
-#
-# The matrix is not decoration. The pom targets Java 11 bytecode, but the server
-# this runs on is Java 25 and README_server_setup.md tells people to install 21,
-# so "does it still work on a modern JVM" is a real question and one that has
-# bitten this project's dependencies before. Building on 11 proves the target is
-# honest; running the tests on 21 proves the result works where it is deployed.
-
 on:
   push:
     branches: ["**"]
   pull_request:
+  # Nightly, for the newer-API job below -- it catches a Minecraft release
+  # breaking us, which has nothing to do with when we push.
+  schedule:
+    - cron: "0 6 * * *"
   workflow_dispatch:
+  # Callable from a release workflow, so a release runs exactly this build
+  # rather than a copy of it that drifts out of sync.
+  workflow_call:
 
 jobs:
-  build:
+  # NOTE ON JOB NAMES -- read before renaming anything here.
+  #
+  # A matrix job does not report its own id: it reports one check per
+  # combination, named `compile (11)`, `compile (17)` and so on. If a branch
+  # ruleset is ever added it should require the aggregating `build` job at the
+  # bottom, whose name stays stable however the matrix grows or shrinks.
+  compile:
+    name: compile
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
+      # Do not cancel the others when one fails. "21 broke and the rest were
+      # cancelled" tells you much less than seeing which versions passed.
       fail-fast: false
       matrix:
         java: ["11", "17", "21"]
@@ -31,11 +40,15 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: maven
 
+      # The matrix is not decoration. pom.xml targets Java 11 bytecode, the
+      # server this is deployed to runs Java 25, and README_server_setup.md
+      # tells people to install 21 -- so "does the 11-targeted jar still work on
+      # a modern JVM" is a real question with three different answers in play.
       - name: Build and test
         run: mvn --batch-mode --no-transfer-progress verify
 
-      # Surefire's own output is buried in the log; this surfaces a failure
-      # summary on the run page itself.
+      # Surefire's output is buried in the log; this puts a failure summary on
+      # the run page itself.
       - name: Test report
         if: always()
         uses: mikepenz/action-junit-report@v5
@@ -45,7 +58,7 @@ jobs:
           fail_on_failure: true
           require_tests: true
 
-      # Only from the Java 11 build, which is the one whose bytecode we ship.
+      # Only from the Java 11 build, which is the bytecode we ship.
       - name: Upload the plugin jar
         if: matrix.java == '11'
         uses: actions/upload-artifact@v7
@@ -53,3 +66,123 @@ jobs:
           name: FruitJuice-jar
           path: target/FruitJuice-*.jar
           if-no-files-found: error
+
+  # Builds against a NEWER Minecraft API than the one pinned in the pom.
+  #
+  # The pinned dependency verifies what we ship. It does not verify that the
+  # next Minecraft release will not break us, and this plugin is unusually
+  # exposed to that: it reaches into block state (Bisected, Bed.Part,
+  # Directional), entity types and materials, all of which move between
+  # versions. The flattening in 1.13 broke directional blocks here and it took
+  # years to notice -- that is the failure mode this job exists to shorten.
+  #
+  # Deliberately NOT in the `build` gate's needs. Mojang shipping something
+  # incompatible must not turn a required check red and block a pull request
+  # for a reason that has nothing to do with its diff. A failure here fails the
+  # workflow run, which is the alarm we want.
+  compile-next-api:
+    name: compile-next-api
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Scoped to this job. Only this one files issues; nothing else here needs
+    # write access.
+    permissions:
+      contents: read
+      issues: write
+
+    # Both the open-on-failure and close-on-success steps look the tracking
+    # issue up by this exact title. Defined once so they cannot drift apart --
+    # if they did, a green run would stop closing the issue a red run opened.
+    env:
+      ISSUE_TITLE: "Nightly: build fails against a newer Minecraft API"
+      NEXT_API: "1.21-R0.1-SNAPSHOT"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build and test against ${{ env.NEXT_API }}
+        run: |
+          mvn --batch-mode --no-transfer-progress \
+              -Dspigot.version=${NEXT_API} verify
+
+      # Email alone is a weak alarm here. A nightly that stays broken for a
+      # week sends seven identical emails, which is how an alarm becomes noise
+      # and then becomes invisible. One issue, updated in place, stays visible
+      # and has a state that means something: open = still broken, closed =
+      # fixed.
+      #
+      # Uses the preinstalled gh CLI and the automatic token, so there is no
+      # marketplace action in the supply chain for this.
+      - name: Open or update the tracking issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          {
+            echo "The nightly build against \`$NEXT_API\` failed."
+            echo
+            echo "This job compiles and tests against a newer Minecraft API than"
+            echo "the one pinned in pom.xml, so a failure here usually means an"
+            echo "upcoming Minecraft release changes something this plugin uses"
+            echo "-- block state, entity types, materials -- rather than that"
+            echo "anything in this repository changed."
+            echo
+            echo "The pinned build is unaffected and still ships."
+            echo
+            echo "Run: $RUN_URL"
+          } > body.md
+
+          EXISTING=$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file body.md
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file body.md --label bug
+          fi
+
+      # The inverse. Without it the issue only ever opens, so after a transient
+      # failure (a Spigot repo hiccup) "open" stops meaning "still broken" until
+      # a human triages it. With it the state is truthful on its own: a real
+      # break keeps failing nightly and stays open; a one-night flake closes
+      # itself on the next green run. A genuine break is never masked, because
+      # this step cannot run while the build is failing.
+      - name: Close the tracking issue when the build is green again
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          EXISTING=$(gh issue list --state open --search "$ISSUE_TITLE in:title" \
+                       --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" \
+              --comment "The nightly build against a newer API passed again: $RUN_URL"
+          fi
+
+  # A stable name to aggregate the matrix into one pass/fail, so a required
+  # check never has to be renamed when the matrix changes.
+  #
+  # `if: always()` is load-bearing. Without it this job is skipped when any
+  # matrix combination fails, and a skipped check reads as neutral rather than
+  # failing -- a pull request would look mergeable with a red matrix.
+  build:
+    name: build
+    if: always()
+    needs: [compile]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any required combination did not succeed
+        run: |
+          echo "compile: ${{ needs.compile.result }}"
+          test "${{ needs.compile.result }}" = "success"
