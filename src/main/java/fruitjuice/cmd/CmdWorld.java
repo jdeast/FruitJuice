@@ -50,10 +50,22 @@ public class CmdWorld {
 
 			session.send(getBlocks(loc1, loc2));
 
-//			// world.getBlockWithData untested
-//		} else if (c.equals("world.getBlockWithData")) {
-//			Location loc = parseRelativeBlockLocation(args[0], args[1], args[2]);
-//			send(world.getBlockTypeIdAt(loc) + "," + world.getBlockAt(loc).getData());	
+			// world.getBlockData
+		} else if (command.equals("getBlockData")) {
+			// The whole block state rather than just the material, e.g.
+			// minecraft:oak_stairs[facing=east,half=bottom,shape=straight].
+			// getBlock reports the material alone, so this is the only way to read
+			// back a block's facing.
+			//
+			// getAsString() is the documented accessor; BlockData.toString() is not
+			// part of the interface contract even though CraftBukkit happens to
+			// delegate to it today.
+			//
+			// The value carries commas inside its brackets, so a client must take
+			// the whole line as one string rather than splitting on commas the way
+			// it does for getBlocks.
+			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
+			session.send(world.getBlockAt(loc).getBlockData().getAsString());
 
 			// world.getBlockTypes
 		} else if (command.equals("getBlockTypes")) {
