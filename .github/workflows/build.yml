@@ -67,6 +67,29 @@ jobs:
           path: target/FruitJuice-*.jar
           if-no-files-found: error
 
+  # The Scratch extension is shipped straight out of docs/ by GitHub Pages, so
+  # nothing compiles it and a syntax error would reach readers unannounced. The
+  # test is plain node with no dependencies, which is why there is no npm
+  # install step here and why it should stay that way.
+  scratch:
+    name: scratch
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Cheap, and catches the whole class of "the extension no longer parses",
+      # which is otherwise only discovered by a reader whose blocks vanish.
+      - name: Check that the extension parses
+        run: node --check docs/scratch.js
+
+      - name: Connection and fallback tests
+        run: node test/scratch/connect.test.js
+
   # Builds against a NEWER Minecraft API than the one pinned in the pom.
   #
   # The pinned dependency verifies what we ship. It does not verify that the
@@ -179,10 +202,12 @@ jobs:
   build:
     name: build
     if: always()
-    needs: [compile]
+    needs: [compile, scratch]
     runs-on: ubuntu-latest
     steps:
-      - name: Fail if any required combination did not succeed
+      - name: Fail if any required job did not succeed
         run: |
           echo "compile: ${{ needs.compile.result }}"
+          echo "scratch: ${{ needs.scratch.result }}"
           test "${{ needs.compile.result }}" = "success"
+          test "${{ needs.scratch.result }}" = "success"

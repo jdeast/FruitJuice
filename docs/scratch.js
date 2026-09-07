@@ -1671,6 +1671,20 @@ class FruitJuice {
     // certificate lists its hostname, so connecting to a raw IP fails hostname
     // verification even when the address is correct.
     // Try a single URL once.
+    // Would the browser veto a ws:// connection from this page?
+    //
+    // scratch.js is served over https from github.io, which makes the page a
+    // secure context, and the mixed content rules forbid a secure context from
+    // opening a plaintext ws:// socket. The browser refuses it before a packet
+    // is sent, unless the reader has explicitly allowed insecure content for
+    // the site. So the plaintext fallback is not a silent downgrade -- the
+    // browser is the gate, and it is shut by default.
+    insecureIsBlocked() {
+        return typeof window !== "undefined" &&
+               window.location != null &&
+               window.location.protocol === "https:";
+    };
+
     openOneSocket_p(url, timeoutMs) {
         var rjm = this;
         return new Promise(function(resolve, reject) {
@@ -1678,7 +1692,38 @@ class FruitJuice {
                 rjm.socket.close();
 
             rjm.clear();
-            var socket = new WebSocket(url);
+
+            var startedAt = Date.now();
+
+            // The WebSocket API deliberately gives scripts no reason for a
+            // failure -- onerror carries an opaque Event, so a refused
+            // connection, a bad certificate and a policy block all look
+            // identical. How long it took is the one clue we get, since a
+            // browser veto needs no network round trip.
+            var describe = function (cause) {
+                var e = new Error("could not open " + url);
+                e.url = url;
+                e.elapsedMs = Date.now() - startedAt;
+                e.likelyBlockedByBrowser = url.indexOf("ws://") === 0 &&
+                                           rjm.insecureIsBlocked() &&
+                                           (e.elapsedMs < 250 ||
+                                            (cause && cause.name === "SecurityError"));
+                e.cause = cause;
+                return e;
+            };
+
+            var socket;
+            try {
+                // Browsers disagree about how they refuse a blocked ws:// URL:
+                // some fire onerror, some throw SecurityError from the
+                // constructor. Catching here covers the second shape, which
+                // otherwise skipped the labelling below and got the failure
+                // blamed on the server certificate.
+                socket = new WebSocket(url);
+            } catch (constructorRefused) {
+                reject(describe(constructorRefused));
+                return;
+            }
             rjm.socket = socket;
 
             var settled = false;
@@ -1695,6 +1740,16 @@ class FruitJuice {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
+                rjm.secure = url.indexOf("wss://") === 0;
+                if (!rjm.secure) {
+                    // Reached only when the reader has turned mixed content
+                    // blocking off, or is running the page over plain http.
+                    // Either way everything they build travels in the clear, so
+                    // say so rather than letting it pass unremarked.
+                    console.warn("FruitJuice: connected to " + url + " WITHOUT " +
+                                 "encryption. Anyone on the network can read and " +
+                                 "change what this page sends to minecraft.");
+                }
                 rjm.attachSocketHandlers(socket);
                 resolve();
             };
@@ -1702,7 +1757,7 @@ class FruitJuice {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
-                reject(err);
+                reject(describe(err));
             };
         });
     };
@@ -1716,8 +1771,9 @@ class FruitJuice {
     //
     // Secure is tried first, so a properly set up server is never downgraded.
     // The insecure attempt costs almost nothing when it is not wanted: from an
-    // https page a ws:// connection is refused immediately as mixed content
-    // rather than waiting out a timeout.
+    // https page the browser refuses ws:// as mixed content without waiting out
+    // a timeout, and insecureIsBlocked lets us tell that apart from a genuine
+    // network failure when reporting what went wrong.
     openSocket_p(urls, attempt) {
         var rjm = this;
         var ATTEMPTS = 3;
@@ -1745,11 +1801,27 @@ class FruitJuice {
             var msg = "Could not connect to " + rjm.ip + " on port " + rjm.port +
                       " after " + ATTEMPTS + " tries.\n\n" +
                       "Check that the server name and port are spelled correctly and " +
-                      "that the server is running.\n\n" +
-                      "If the server was set up WITHOUT an SSL certificate, your " +
-                      "browser also has to be told to allow insecure content for this " +
-                      "page: click the icon at the left of the address bar, then allow " +
-                      "it, then try again.";
+                      "that the server is running.";
+
+            // Two very different problems used to share one message. Telling
+            // somebody whose certificate has expired to "allow insecure
+            // content" sends them to fix the wrong thing, and talking about
+            // certificates to somebody whose browser blocked the attempt before
+            // it left the machine is just as unhelpful.
+            if (err && err.likelyBlockedByBrowser) {
+                msg += "\n\nThis server has no SSL certificate, and your browser " +
+                       "blocked the unencrypted connection. To allow it, click the " +
+                       "icon at the left of the address bar, allow insecure content " +
+                       "for this page, and try again.\n\n" +
+                       "That leaves the connection unencrypted. The better fix is a " +
+                       "certificate on the server.";
+            } else if (rjm.insecureIsBlocked()) {
+                msg += "\n\nThe secure connection failed, which usually means the " +
+                       "server's certificate is missing, expired, or was issued for " +
+                       "a different name than the one typed above. Ask whoever runs " +
+                       "the server to check it.";
+            }
+
             console.error("FruitJuice: " + msg, err);
             window.alert(msg);
             throw err;

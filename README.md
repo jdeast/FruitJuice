@@ -156,6 +156,7 @@ The jar lands in `target/`.
  - 0.2.0 - Updates from integer block IDs to string block IDs broke the way directional blocks work. Partial fix.
  - 0.3.0 - [minecraftdawn]'s refactoring of cmdPlayer broke player selection implemented in mcpi_e. Fixed.
  - 0.4.0 - Player selection by entity id, which had been driving the wrong player and corrupting coordinates. Beds, doors and tall plants now place as the two blocks they really are. Blocks take an optional facing and no longer all default to WEST. New `world.getBlockData` and `world.getBlockTypes`, so the Scratch block list comes from the server rather than a hardcoded list that went stale each release. `plugin.yml` had reported version 0.1.0 since 0.1.0; it now matches.
+ - 0.5.0 - Twelve bugs found in a full read of the plugin, the ones that bite hardest being commas silently dropped from chat messages, malformed input getting no reply at all so the client hung forever, `getEntity` throwing when nobody was online, and negative coordinates truncating toward zero instead of flooring. Command and event queues are now thread-safe and bounded. Sessions can build in any world, not just the first, via `world.setWorld`. Scratch pairs each reply with the request that asked for it, so overlapping blocks no longer swap answers, and says so plainly when it is not connected instead of doing nothing. First unit tests and CI.
 
 ## Contributors
 
