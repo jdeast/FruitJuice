@@ -208,7 +208,7 @@ Modify config.yml:
 
 ### From jar file
 
-copy https://github.com/jdeast/FruitJuice/target/FruitJuice.jar to your plugin directory 
+download the latest FruitJuice jar from https://github.com/jdeast/FruitJuice/releases/latest and copy it to your plugin directory
 
 ### From Source
 

@@ -60,9 +60,8 @@ tags
 .vscode
 .idea/encodings.xml
 .idea/modules.xml
-target/classes
-target/maven-archiver
-target/maven-status
+# build output -- released jars are attached to github releases instead
+target/
 .mvn
 mvnw
 mvnw.cmd

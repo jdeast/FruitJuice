@@ -99,7 +99,7 @@ https://ci.opencollab.dev/job/GeyserMC/job/Floodgate/job/master/
 9. You can skip this step if you just want a multi-player server (no scratch or python).
 
 Download FruitJuice plugin:
-https://github.com/jdeast/FruitJuice/blob/master/target/
+https://github.com/jdeast/FruitJuice/releases/latest
 
 10. Move the jar files you downloaded from steps 8-9 into the plugins directory
 
@@ -311,7 +311,7 @@ mkdir -p ~/minecraft-server/data ~/minecraft-server/plugins
 
 `data` is where your worlds and configs will live; `plugins` is where the plugin jars go. Both survive the container being deleted, so this is what you back up.
 
-3. Put FruitJuice-0.3.0.jar into the `plugins` folder. Get it from https://github.com/jdeast/FruitJuice/tree/master/target
+3. Put the FruitJuice jar into the `plugins` folder. Download the latest one from https://github.com/jdeast/FruitJuice/releases/latest
 
 If you want players on older or newer Minecraft versions to be able to connect, also drop ViaVersion.jar in there from https://hangar.papermc.io/ViaVersion/ViaVersion
 
