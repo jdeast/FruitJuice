@@ -1,0 +1,106 @@
+name: Release
+
+# Builds the plugin and publishes it as a GitHub Release when a v* tag is
+# pushed.
+#
+# There is no package registry involved: the jar goes on the release, which is
+# where README.md and README_server_setup.md both send people, and it is the
+# reason target/ is no longer tracked in git.
+#
+# RELEASING:
+#   bump <version> in pom.xml, commit, then
+#     git tag -a v0.5.0 -m "v0.5.0" -m "<release notes body>"
+#     git push origin v0.5.0
+#   The tag message body becomes the release notes.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  # Reused via workflow_call rather than copied, so a release runs exactly the
+  # build and tests that CI runs, and the two cannot drift apart.
+  #
+  # A release must not be able to go out over a red suite: unlike a file on
+  # disk, a published release is something people download and run on a server
+  # their kids play on.
+  build:
+    uses: ./.github/workflows/build.yml
+
+  release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: startsWith(github.ref, 'refs/tags/')
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # the release notes come from the annotated tag's own message, which a
+          # shallow clone does not have
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: maven
+
+      - name: Build the jar
+        run: mvn --batch-mode --no-transfer-progress package -DskipTests
+
+      # The version lives in pom.xml, so a tag can disagree with what was built.
+      # A published release that says 0.5.0 and contains a 0.4.0 jar is worse
+      # than a failed build, and much harder to notice: the plugin reports its
+      # version to the server console, so the mismatch surfaces weeks later as
+      # "which version is actually running".
+      - name: Version matches the tag
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          # Read it off the artifact rather than the pom: maven names the jar
+          # from the version it actually built, so this checks the thing that
+          # is about to be published rather than the input that produced it.
+          built=$(basename target/FruitJuice-*.jar .jar | sed "s|^FruitJuice-||")
+          echo "tag=$tag built=$built"
+          if [ "$tag" != "$built" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME implies version '$tag' but the" \
+                 "build produced '$built'. Bump the pom to match, or move the tag."
+            exit 1
+          fi
+
+      # plugin.yml is what the server reads, and it drifted from pom.xml for two
+      # whole releases -- /version FruitJuice reported 0.1.0 while the pom said
+      # 0.3.0. Cheap to check, and the check is the only thing that would have
+      # caught it.
+      - name: plugin.yml agrees with pom.xml
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          yml=$(grep -E "^version:" src/main/resources/plugin.yml | sed "s/version: *'\\?//; s/'\\?$//")
+          echo "tag=$tag plugin.yml=$yml"
+          if [ "$tag" != "$yml" ]; then
+            echo "::error::plugin.yml says '$yml' but the tag implies '$tag'." \
+                 "The server reports this number, so it has to match."
+            exit 1
+          fi
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          # Body = the annotated tag's message minus its first line (the title).
+          git tag -l "$tag" --format='%(contents)' | tail -n +2 > notes.md
+          prerelease=""
+          case "$tag" in
+            *a*|*b*|*rc*) prerelease="--prerelease" ;;
+          esac
+          gh release create "$tag" --verify-tag --title "$tag" \
+            --notes-file notes.md $prerelease target/FruitJuice-*.jar
