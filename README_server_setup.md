@@ -345,7 +345,7 @@ This will render a T-rex inside minecraft at the first player's position, or at 
 
 This loads a standard scratch interface, but with an additional "Minecraft" set of command blocks that allow you to connect to your server, chat, set blocks, spawn entities, etc.
 
-2. Load FruitJuice/scratch/examples/rainbowtower.sb
+2. Load FruitJuice/scratch/examples/rainbow_tower.sb3
 
 3. Edit the connect block to match your server. The address must be the exact domain the certificate was issued for (MY_MINECRAFT_SERVER.duckdns.org). The port is already correct: the block defaults to 14711, which is the port websockify listens on in these instructions. If you connect to a port nothing is listening on, scratch fails silently with no error in the browser.
 
