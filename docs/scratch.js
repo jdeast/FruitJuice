@@ -1263,24 +1263,108 @@ class FruitJuice {
 	return this.resolveBlock(name);
     }
     
+    // Is there a socket, and is it actually open?
+    //
+    // readyState 1 is OPEN. A socket that is still CONNECTING, or one that has
+    // closed, will throw on send().
+    isConnected() {
+        return this.socket != null && this.socket.readyState === 1;
+    };
+
     send(msg) {
         if (!("TextEncoder" in window)) 
             alert("Sorry, this browser does not support TextEncoder...");
+
+        // Without this, every block that sends -- chat, put block, move player
+        // -- threw a TypeError on a null socket if the green flag had not
+        // connected yet, or if connecting failed. In scratch that surfaced as
+        // the block quietly doing nothing.
+        if (!this.isConnected()) {
+            this.blockProblem("Not connected to minecraft. Use the connect " +
+                              "block before any other minecraft block.");
+            return;
+        }
+
         var enc = new TextEncoder(); // always utf-8
         this.socket.send(enc.encode(msg+"\n"));
     };
 
+    // How long to wait for a reply before giving up on it.
+    static get REPLY_TIMEOUT_MS() { return 10000; }
+
+    // Install one message handler for the socket, and start an empty queue of
+    // requests waiting for an answer.
+    //
+    // sendAndReceive used to reassign socket.onmessage on every call, with
+    // nothing tying a reply to the request that caused it. Two overlapping
+    // requests -- trivially easy in scratch with parallel scripts or a forever
+    // loop -- clobbered each other: the first promise never settled, and the
+    // second could be handed the first's answer. The server replies in the
+    // order it was asked, so shifting one waiter per message pairs them up.
+    attachSocketHandlers(socket) {
+        var rjm = this;
+        this.pending = [];
+
+        socket.onmessage = function(event) {
+            var deliver = function(text) {
+                var waiter = rjm.pending.shift();
+                if (waiter === undefined) return;   // nothing asked for this
+                clearTimeout(waiter.timer);
+                // A waiter that already timed out still owns this reply, so it
+                // is consumed and dropped rather than handed to the next one
+                // in the queue -- otherwise one slow answer shifts every later
+                // reply onto the wrong request.
+                if (!waiter.timedOut) waiter.resolve(text);
+            };
+            if (event.data && typeof event.data.text === "function") {
+                event.data.text().then(deliver);     // a Blob, as browsers send
+            } else {
+                deliver(String(event.data));         // already a string
+            }
+        };
+
+        socket.onerror = function(err) { rjm.failPending(err); };
+        socket.onclose = function() {
+            rjm.failPending(new Error("the connection to minecraft closed"));
+        };
+    };
+
+    // Reject everything still waiting. Called when the socket errors or closes,
+    // so blocks fail promptly instead of hanging until their timeout.
+    failPending(err) {
+        var waiting = this.pending || [];
+        this.pending = [];
+        for (var i = 0; i < waiting.length; i++) {
+            clearTimeout(waiting[i].timer);
+            if (!waiting[i].timedOut) waiting[i].reject(err);
+        }
+    };
+
     sendAndReceive(msg) {
         var rjm = this;
-        return new Promise(function(resolve, reject) {            
-            rjm.socket.onmessage = function(event) {
-                resolve(event.data.text());
-            };
-            rjm.socket.onerror = function(err) {
-                reject(err);
-            };
-//            rjm.socket.send(enc.encode(msg+"\n"));
-              rjm.send(msg);
+        return new Promise(function(resolve, reject) {
+            if (!rjm.isConnected()) {
+                rjm.blockProblem("Not connected to minecraft. Use the connect " +
+                                 "block before any other minecraft block.");
+                reject(new Error("not connected"));
+                return;
+            }
+            if (rjm.pending === undefined) rjm.pending = [];
+
+            var waiter = {resolve: resolve, reject: reject, timer: null,
+                          timedOut: false, sent: msg};
+            waiter.timer = setTimeout(function() {
+                // Left in the queue on purpose; see the note in the handler.
+                waiter.timedOut = true;
+                rjm.blockProblem("Minecraft did not answer " + msg + " within " +
+                                 (FruitJuice.REPLY_TIMEOUT_MS / 1000) + "s. The " +
+                                 "server may be busy, or the connection may have " +
+                                 "been lost.");
+                reject(new Error("timed out waiting for " + msg));
+            }, FruitJuice.REPLY_TIMEOUT_MS);
+
+            rjm.pending.push(waiter);
+            rjm.send(msg);
         });
     };
     
@@ -1491,7 +1575,7 @@ class FruitJuice {
     onBlock({b}) {
 //        return this.getPosition().then( pos => this.sendAndReceive("world.getBlockWithData("+Math.floor(pos[0])+","+Math.floor(pos[1]-1)+","+Math.floor(pos[2])+")")
         return this.getPosition().then( pos => this.sendAndReceive("world.getBlock("+Math.floor(pos[0])+","+Math.floor(pos[1]-1)+","+Math.floor(pos[2])+")")
-                    .then( block => block == b ) );
+                    .then( block => block == this.resolveBlock(b) ) );
     }
 
     haveBlock({b,x,y,z}) {
@@ -1499,7 +1583,11 @@ class FruitJuice {
 //        return this.sendAndReceive("world.getBlockWithData("+x+","+y+","+z+")")
         return this.sendAndReceive("world.getBlock("+x+","+y+","+z+")")
             .then(block => {
-                return block == b;
+                // resolveBlock, so a block number or a menu label like
+                // "Red Wool (178)" compares correctly. Comparing the raw
+                // argument only ever matched a bare material name, which
+                // silently defeated the numeric API these blocks exist for.
+                return block == this.resolveBlock(b);
             });
     };
     
@@ -1610,6 +1698,7 @@ class FruitJuice {
                 if (settled) return;
                 settled = true;
                 clearTimeout(timer);
+                rjm.attachSocketHandlers(socket);
                 resolve();
             };
             socket.onerror = function(err) {
