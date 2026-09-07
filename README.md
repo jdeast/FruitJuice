@@ -217,6 +217,7 @@ mvn package
  - [stoneskin](https://github.com/stoneskin) (pyncraft/mcpi_e)
  - [apruss](https://github.com/arpruss) (scratch)
  - [minecraftdawn](https://github.com/minecraftdawn)
+ - [d4g33z](https://github.com/d4g33z) (player id handling)
  - [zhuowei](https://github.com/zhuowei)
  - [martinohanlon](https://github.com/martinohanlon)
  - [jclaggett](https://github.com/jclaggett)

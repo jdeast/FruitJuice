@@ -6,6 +6,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CmdPlayer {
     private final String preFix = "player.";
@@ -62,9 +65,79 @@ public class CmdPlayer {
 		return player;
 	}
 
+	/**
+	 * Finds a player on the server by their entity ID.
+	 *
+	 * @param id The entity ID of the player.
+	 * @return The Player object if found, otherwise null.
+	 */
+	private Player getPlayerById(int id) {
+		for (Player player : Bukkit.getOnlinePlayers()) {
+			if (player.getEntityId() == id) {
+				return player;
+			}
+		}
+		return null; // Return null if no player with the given ID is found.
+	}
+
+	// How many arguments each player.* command takes *without* the optional
+	// leading entity ID. pyncraft prepends that ID to every positional command
+	// when Minecraft.create() was given a playerName; scratch and the default
+	// pyncraft path (playerId = [], which flattens away) send no ID at all.
+	// Commands absent from this table never get ID treatment -- setPlayer takes
+	// a player name, not an ID.
+	private static final Map<String, Integer> ARG_COUNTS = new HashMap<>();
+	static {
+		ARG_COUNTS.put("getTile", 0);
+		ARG_COUNTS.put("setTile", 3);
+		ARG_COUNTS.put("getAbsPos", 0);
+		ARG_COUNTS.put("setAbsPos", 3);
+		ARG_COUNTS.put("getPos", 0);
+		ARG_COUNTS.put("setPos", 3);
+		ARG_COUNTS.put("getDirection", 0);
+		ARG_COUNTS.put("setDirection", 3);
+		ARG_COUNTS.put("getRotation", 0);
+		ARG_COUNTS.put("setRotation", 1);
+		ARG_COUNTS.put("getPitch", 0);
+		ARG_COUNTS.put("setPitch", 1);
+		ARG_COUNTS.put("getFoodLevel", 0);
+		ARG_COUNTS.put("setFoodLevel", 1);
+		ARG_COUNTS.put("getHealth", 0);
+		ARG_COUNTS.put("setHealth", 1);
+		ARG_COUNTS.put("sendTitle", 5);
+	}
     public void execute(String command, String[] args) {
 
-		Player currentPlayer = getCurrentPlayer();
+		// A no-argument call like "player.getPos()" parses to a single empty
+		// string rather than an empty array, so normalise that first.
+		if (args.length == 1 && args[0].isEmpty()) {
+			args = new String[0];
+		}
+
+		// If we got exactly one argument more than the command needs, the first
+		// one is the entity ID of the player to act on. Anything else keeps the
+		// historical behaviour, so existing scratch and pyncraft code is unaffected.
+		Player currentPlayer = null;
+		Integer expected = ARG_COUNTS.get(command);
+		if (expected != null && args.length == expected + 1) {
+			try {
+				currentPlayer = getPlayerById(Integer.parseInt(args[0].trim()));
+				if (currentPlayer == null) {
+					session.send("Fail,No player found with ID: " + args[0]);
+					return;
+				}
+				attachedPlayer = currentPlayer;
+				args = Arrays.copyOfRange(args, 1, args.length);
+			} catch (NumberFormatException e) {
+				// Not an ID after all; fall through rather than rejecting a
+				// command that used to work.
+				currentPlayer = null;
+			}
+		}
+
+		if (currentPlayer == null) {
+			currentPlayer = getCurrentPlayer();
+		}
 		if (currentPlayer == null) {
 			session.send("Fail,There are no players in the server.");
 			return;
