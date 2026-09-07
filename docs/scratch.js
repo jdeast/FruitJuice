@@ -1670,12 +1670,9 @@ class FruitJuice {
     // Note we always connect by name, never by a resolved address: the server's
     // certificate lists its hostname, so connecting to a raw IP fails hostname
     // verification even when the address is correct.
-    openSocket_p(url, attempt) {
+    // Try a single URL once.
+    openOneSocket_p(url, timeoutMs) {
         var rjm = this;
-        var ATTEMPTS = 3;
-        var TIMEOUT_MS = 8000;
-        attempt = attempt || 1;
-
         return new Promise(function(resolve, reject) {
             if (rjm.socket != null)
                 rjm.socket.close();
@@ -1691,8 +1688,8 @@ class FruitJuice {
                 socket.onopen = null;
                 socket.onerror = null;
                 socket.close();
-                reject(new Error('timed out after ' + (TIMEOUT_MS / 1000) + 's'));
-            }, TIMEOUT_MS);
+                reject(new Error("timed out after " + (timeoutMs / 1000) + "s"));
+            }, timeoutMs);
 
             socket.onopen = function() {
                 if (settled) return;
@@ -1707,21 +1704,53 @@ class FruitJuice {
                 clearTimeout(timer);
                 reject(err);
             };
-        }).catch(function(err) {
+        });
+    };
+
+    // Try each URL in turn, then wait and go round again.
+    //
+    // There used to be a second copy of this whole file, scratch_insecure.js,
+    // whose only difference was ws:// in place of wss://. One line of behaviour
+    // does not justify 80KB of duplicate that has to be kept in step by hand,
+    // and it made the setup guide hand out two different links.
+    //
+    // Secure is tried first, so a properly set up server is never downgraded.
+    // The insecure attempt costs almost nothing when it is not wanted: from an
+    // https page a ws:// connection is refused immediately as mixed content
+    // rather than waiting out a timeout.
+    openSocket_p(urls, attempt) {
+        var rjm = this;
+        var ATTEMPTS = 3;
+        var TIMEOUT_MS = 8000;
+        attempt = attempt || 1;
+        if (typeof urls === "string") urls = [urls];
+
+        var tryFrom = function(i, lastErr) {
+            if (i >= urls.length) return Promise.reject(lastErr);
+            return rjm.openOneSocket_p(urls[i], TIMEOUT_MS).catch(function(err) {
+                console.warn("FruitJuice: " + urls[i] + " did not connect", err);
+                return tryFrom(i + 1, err);
+            });
+        };
+
+        return tryFrom(0, null).catch(function(err) {
             if (attempt < ATTEMPTS) {
                 var delay = 1000 * attempt;
-                console.warn('FruitJuice: attempt ' + attempt + ' to reach ' + url +
-                             ' failed; retrying in ' + (delay / 1000) + 's', err);
+                console.warn("FruitJuice: attempt " + attempt + " failed; retrying in " +
+                             (delay / 1000) + "s");
                 return new Promise(function(again) { setTimeout(again, delay); })
-                    .then(function() { return rjm.openSocket_p(url, attempt + 1); });
+                    .then(function() { return rjm.openSocket_p(urls, attempt + 1); });
             }
 
-            var hint = url.indexOf('ws://') === 0
-                ? ' Because this is an insecure connection, you may also need to allow "insecure content" for this page in your browser settings.'
-                : " If the name and port are right, the server's certificate may not cover this exact name -- check it with whoever runs the server.";
-            var msg = 'Could not connect to ' + url + ' after ' + ATTEMPTS + ' tries. ' +
-                      'Check that the server name and port are spelled correctly and that the server is running.' + hint;
-            console.error('FruitJuice: ' + msg, err);
+            var msg = "Could not connect to " + rjm.ip + " on port " + rjm.port +
+                      " after " + ATTEMPTS + " tries.\n\n" +
+                      "Check that the server name and port are spelled correctly and " +
+                      "that the server is running.\n\n" +
+                      "If the server was set up WITHOUT an SSL certificate, your " +
+                      "browser also has to be told to allow insecure content for this " +
+                      "page: click the icon at the left of the address bar, then allow " +
+                      "it, then try again.";
+            console.error("FruitJuice: " + msg, err);
             window.alert(msg);
             throw err;
         });
@@ -1731,7 +1760,9 @@ class FruitJuice {
         this.port = port;
 
         var rjm = this;
-        return this.openSocket_p("wss://"+ip+":"+port)
+        // Secure first, then insecure. This replaces having two builds of the
+        // extension and two URLs in the setup guide.
+        return this.openSocket_p(["wss://"+ip+":"+port, "ws://"+ip+":"+port])
             .then(result => rjm.getPosition().then( result => {
                 rjm.turtle.pos = result;
             })).then (result => rjm.getRotation().then( result => {

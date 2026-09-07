@@ -146,9 +146,9 @@ sudo apt-get install websockify # only once
 websockify 14711 localhost:4711 & # must be running for scratch
 ```
 
-This sends every command in the clear, and modern browsers block insecure `ws://` connections from an `https://` page as "mixed content". The scratch page is served over https, so this option only works if each user overrides it, using the insecure build of the extension:
+This sends every command in the clear, and modern browsers block insecure `ws://` connections from an `https://` page as "mixed content". The scratch page is served over https, so each user has to override that. They still use the same URL -- the extension tries a secure connection first and falls back to this one:
 
-https://jdeast.github.io/FruitJuice/?load_plugin=scratch_insecure.js
+https://jdeast.github.io/FruitJuice/?load_plugin=scratch.js
 
 and then clicking the icon at the left of the browser's address bar and allowing "insecure content" for that site. Without that exception, scratch will silently fail. Use Option 2 for anything beyond a quick test.
 

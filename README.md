@@ -26,7 +26,9 @@ mc.postToChat("hello world!")
 
 https://jdeast.github.io/FruitJuice/?load_plugin=scratch.js
 
-Scratch talks to the server through a websocket relay rather than directly, so the server also needs websockify and an SSL certificate. That is covered in the setup guide. If your server was set up without a certificate, use `scratch_insecure.js` instead and allow insecure content for the page.
+Scratch talks to the server through a websocket relay rather than directly, so the server also needs websockify. That is covered in the setup guide.
+
+There is one URL whether or not the server has an SSL certificate. The extension tries a secure connection first and falls back to an insecure one, so a properly set up server is never downgraded. If your server has no certificate, the browser will also need to be told to allow insecure content for the page -- the error message says so when it happens.
 
 ## Commands
 
