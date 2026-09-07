@@ -116,7 +116,11 @@ public class RemoteSession {
 
     // Drops the oldest event when the queue is full rather than throwing or
     // growing forever. offer() returns false on a full bounded queue.
-    private <T> void queueEvent(Queue<T> queue, T event) {
+    //
+    // Static and package-visible so the bounding can be tested directly. A
+    // RemoteSession needs a live socket to construct, and none of that is
+    // relevant to "what happens when the queue fills up".
+    static <T> void queueEvent(Queue<T> queue, T event) {
         while (!queue.offer(event)) {
             if (queue.poll() == null) return;
         }

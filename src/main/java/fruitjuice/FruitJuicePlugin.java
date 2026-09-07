@@ -83,9 +83,7 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 		// bound every interface regardless and the setting was a lie. Blank still
 		// means all interfaces, which is the documented default.
 		String hostname = this.getConfig().getString("hostname");
-		InetSocketAddress bindAddress = (hostname == null || hostname.trim().isEmpty())
-				? new InetSocketAddress(port)
-				: new InetSocketAddress(hostname.trim(), port);
+		InetSocketAddress bindAddress = bindAddressFor(hostname, port);
 		getLogger().info("Listening on " + bindAddress);
 
 		try {
@@ -160,6 +158,22 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 	// ranks; matching on that made world.getPlayerId(name) fail as soon as any of
 	// them was installed. The list name is still accepted as a fallback so
 	// existing scripts that pass it keep working.
+	/**
+	 * Where to listen, from the configured hostname.
+	 *
+	 * Blank or absent means every interface, which is what the shipped
+	 * config.yml documents as the default. A value narrows it, so
+	 * "localhost" really does refuse remote clients now -- for years the
+	 * setting was documented but never read, so it bound everything
+	 * regardless and anyone relying on it had a security control that did
+	 * nothing.
+	 */
+	static InetSocketAddress bindAddressFor(String hostname, int port) {
+		return (hostname == null || hostname.trim().isEmpty())
+				? new InetSocketAddress(port)
+				: new InetSocketAddress(hostname.trim(), port);
+	}
+
 	public Player getNamedPlayer(String name) {
 		if (name == null) return null;
 		for (Player player : Bukkit.getOnlinePlayers()) {
