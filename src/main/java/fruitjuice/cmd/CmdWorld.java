@@ -261,6 +261,9 @@ public class CmdWorld {
 				return;
 			}
 			Entity entity = world.spawnEntity(loc, type);
+			// So entity.* can reach it afterwards even with nobody online; see
+			// FruitJuicePlugin.rememberSpawnedEntity.
+			session.plugin.rememberSpawnedEntity(entity);
 			session.send(entity.getEntityId());
 
 			// world.explode

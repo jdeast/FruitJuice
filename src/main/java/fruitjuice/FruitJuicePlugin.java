@@ -197,11 +197,59 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 	}
 
 	//get entity by id - DONE to be compatible with the pi it should be changed to return an entity not a player...
+	/**
+	 * Entities this plugin spawned, newest last, most recent 1000 kept.
+	 *
+	 * getEntity resolves an id by scanning every world's getEntities(), which
+	 * only reports entities in loaded chunks. With nobody logged in nothing
+	 * keeps chunks loaded, so on an empty server that scan finds nothing at all
+	 * -- a script could spawn something and then be unable to address it a
+	 * millisecond later, including to remove it again.
+	 *
+	 * spawnEntity already has the Entity in its hand, so remembering it costs
+	 * one map write and removes the need to search for it at all. Bounded,
+	 * because a script spawning in a loop would otherwise pin every entity it
+	 * ever made; 1000 is far more than any session addresses by id, and the
+	 * oldest entry is the least likely to still be wanted.
+	 */
+	private static final int MAX_REMEMBERED_ENTITIES = 1000;
+
+	// Static so it exists without the constructor having run, which is what
+	// lets the lookup be tested at all -- a JavaPlugin cannot be constructed
+	// outside a running server. There is one plugin instance per server, so
+	// this is not shared between anything; onDisable clears it so a reload
+	// does not carry entity references from the previous life of the plugin.
+	private static final Map<Integer, Entity> spawnedEntities = Collections.synchronizedMap(
+			new LinkedHashMap<Integer, Entity>(16, 0.75f, false) {
+				@Override
+				protected boolean removeEldestEntry(Map.Entry<Integer, Entity> eldest) {
+					return size() > MAX_REMEMBERED_ENTITIES;
+				}
+			});
+
+	/** Called by world.spawnEntity, so the new entity can be found again. */
+	public void rememberSpawnedEntity(Entity entity) {
+		if (entity != null) {
+			spawnedEntities.put(entity.getEntityId(), entity);
+		}
+	}
+
 	public Entity getEntity(int id) {
 		for (Player p : getServer().getOnlinePlayers()) {
 			if (p.getEntityId() == id) {
 				return p;
 			}
+		}
+
+		// Anything we spawned ourselves, whether or not its chunk is loaded.
+		Entity remembered = spawnedEntities.get(id);
+		if (remembered != null) {
+			if (remembered.isValid()) {
+				return remembered;
+			}
+			// Dead or despawned. Drop it so the map does not accumulate
+			// corpses, and fall through in case the id has been reused.
+			spawnedEntities.remove(id);
 		}
 		// Search every loaded world rather than the host player's, which used to
 		// NPE whenever nobody was online.
@@ -223,6 +271,9 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 
 
 	public void onDisable() {
+		// The registry outlives the instance because it is static, so let go of
+		// the entities rather than carrying them into a reload.
+		spawnedEntities.clear();
 		getServer().getScheduler().cancelTasks(this);
 		for (RemoteSession session : sessions) {
 			try {
