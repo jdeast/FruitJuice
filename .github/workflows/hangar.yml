@@ -54,6 +54,43 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Hangar answers a malformed key with "Badly formatted API Key" and no
+      # indication of what it objected to. Its check is a length and a
+      # separator: exactly 73 characters, being a 36-character UUID, a dot, and
+      # 36 more.
+      #
+      # The mistake that produces it is copying the identifier out of the API
+      # keys list, which is only the first 36 characters -- the full token is
+      # shown once, at creation, and never again. That is indistinguishable
+      # from a typo in Hangar's error, so say which it looks like here.
+      #
+      # Only the length and the separator character are printed. GitHub masks
+      # the value regardless.
+      - name: Check the token is shaped like a Hangar key
+        if: steps.token.outputs.configured == 'true'
+        env:
+          HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
+        run: |
+          n=${#HANGAR_API_TOKEN}
+          sep=${HANGAR_API_TOKEN:36:1}
+          echo "token length: $n (expected 73)"
+          echo "character 37: [$sep] (expected [.])"
+          if [ "$n" -ne 73 ] || [ "$sep" != "." ]; then
+            echo "::error::HANGAR_API_TOKEN is not shaped like a Hangar API key"
+            echo "A key is <36-char UUID>.<36-char token>, 73 characters in total."
+            if [ "$n" -eq 36 ]; then
+              echo "36 characters is the key IDENTIFIER, which is what the API keys"
+              echo "list shows. The full token is displayed once, when the key is"
+              echo "created. Create a new key and copy the value shown at that moment."
+            elif [ "$n" -gt 73 ]; then
+              echo "Longer than expected: most likely a trailing newline or space."
+            elif [ "$n" -eq 0 ]; then
+              echo "Empty. The secret exists but has no value."
+            fi
+            exit 1
+          fi
+          echo "token is correctly shaped"
+
       - name: Work out which release to publish
         if: steps.token.outputs.configured == 'true'
         id: rel
