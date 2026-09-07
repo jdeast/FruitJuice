@@ -334,6 +334,11 @@ public class RemoteSession {
         running = false;
         pendingRemoval = true;
 
+        // Whatever this session was holding loaded, let it go. Releasing when
+        // an entity is removed instead would leak, because most spawned
+        // entities are never explicitly removed.
+        plugin.pinnedChunks().releaseAll(this);
+
         //wait for threads to stop
         try {
             inThread.join(2000);

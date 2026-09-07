@@ -227,6 +227,20 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 				}
 			});
 
+	/**
+	 * Chunks held loaded so that spawned entities survive. Created lazily
+	 * because a JavaPlugin's fields cannot be initialised before it exists, and
+	 * looked up through here so nothing else needs to know it is shared.
+	 */
+	private PinnedChunks pinnedChunks;
+
+	public synchronized PinnedChunks pinnedChunks() {
+		if (pinnedChunks == null) {
+			pinnedChunks = new PinnedChunks(this);
+		}
+		return pinnedChunks;
+	}
+
 	/** Called by world.spawnEntity, so the new entity can be found again. */
 	public void rememberSpawnedEntity(Entity entity) {
 		if (entity != null) {
@@ -274,6 +288,8 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 		// The registry outlives the instance because it is static, so let go of
 		// the entities rather than carrying them into a reload.
 		spawnedEntities.clear();
+		// Chunks we were holding open must not stay loaded after we stop.
+		pinnedChunks().releaseEverything();
 		getServer().getScheduler().cancelTasks(this);
 		for (RemoteSession session : sessions) {
 			try {

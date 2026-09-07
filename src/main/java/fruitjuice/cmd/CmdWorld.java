@@ -260,9 +260,15 @@ public class CmdWorld {
 				session.send("Fail,No entity type called " + args[3]);
 				return;
 			}
+			// Hold the chunk loaded BEFORE spawning. An entity spawned into a
+			// chunk nothing is keeping loaded does not survive -- with nobody
+			// logged in it is gone before the next command arrives. Released
+			// when this session closes.
+			session.plugin.pinnedChunks().pin(session, world.getChunkAt(loc));
+
 			Entity entity = world.spawnEntity(loc, type);
-			// So entity.* can reach it afterwards even with nobody online; see
-			// FruitJuicePlugin.rememberSpawnedEntity.
+			// So entity.* can reach it afterwards without scanning every entity
+			// in every world; see FruitJuicePlugin.rememberSpawnedEntity.
 			session.plugin.rememberSpawnedEntity(entity);
 			session.send(entity.getEntityId());
 

@@ -28,6 +28,15 @@ jobs:
   # their kids play on.
   build:
     uses: ./.github/workflows/build.yml
+    # A called workflow cannot ask for more than the caller was granted, so
+    # these have to be declared here too. build.yml wants checks: write for
+    # the test report and issues: write for the nightly tracking issue.
+    # Without them the whole run fails at startup with a workflow file
+    # error and no job ever starts -- which is what happened to v0.5.0.
+    permissions:
+      contents: read
+      checks: write
+      issues: write
 
   release:
     needs: [build]
