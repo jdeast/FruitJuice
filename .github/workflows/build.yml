@@ -24,6 +24,14 @@ jobs:
     name: compile
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    # action-junit-report publishes its summary as a check run, which needs
+    # checks: write. Without it the step failed with "Resource not accessible
+    # by integration" on every run and the summary never appeared -- quietly,
+    # because the job still passed on the strength of mvn verify alone.
+    permissions:
+      contents: read
+      checks: write
     strategy:
       # Do not cancel the others when one fails. "21 broke and the rest were
       # cancelled" tells you much less than seeing which versions passed.
