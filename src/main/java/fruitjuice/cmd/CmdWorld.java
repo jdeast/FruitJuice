@@ -227,7 +227,12 @@ public class CmdWorld {
 			// world.spawnEntity
 		} else if (command.equals("spawnEntity")) {
 			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
-			Entity entity = world.spawnEntity(loc, EntityType.fromId(Integer.parseInt(args[3])));
+			EntityType type = parseEntityType(args[3]);
+			if (type == null) {
+				session.send("Fail,No entity type called " + args[3]);
+				return;
+			}
+			Entity entity = world.spawnEntity(loc, type);
 			session.send(entity.getEntityId());
 
 			// world.explode
@@ -239,10 +244,16 @@ public class CmdWorld {
 
 			// world.getEntityTypes
 		} else if (command.equals("getEntityTypes")) {
+			// Report every spawnable type, not just the ones with a pre-1.13 numeric
+			// id. Modern entities (warden, allay, camel, sniffer) have no legacy id, so
+			// filtering on getTypeId() >= 0 hid everything added since 2018. Those are
+			// listed under their name, which spawnEntity now also accepts.
 			StringBuilder bdr = new StringBuilder();
 			for (EntityType entityType : EntityType.values()) {
-				if (entityType.isSpawnable() && entityType.getTypeId() >= 0) {
-					bdr.append(entityType.getTypeId());
+				if (entityType.isSpawnable()) {
+					bdr.append(entityType.getTypeId() >= 0
+							? String.valueOf(entityType.getTypeId())
+							: entityType.name());
 					bdr.append(",");
 					bdr.append(entityType.toString());
 					bdr.append("|");
@@ -273,6 +284,22 @@ public class CmdWorld {
 					updateBlock(world, x, y, z, blockType);
 				}
 			}
+		}
+	}
+
+	// Accepts an entity name ("PIG", "warden") or a pre-1.13 numeric id, so older
+	// clients keep working while modern entities become reachable at all.
+	private EntityType parseEntityType(String s) {
+		String name = s.trim();
+		try {
+			return EntityType.valueOf(name.toUpperCase());
+		} catch (IllegalArgumentException notAName) {
+			// fall through to the legacy numeric form
+		}
+		try {
+			return EntityType.fromId(Integer.parseInt(name));
+		} catch (Exception notAnId) {
+			return null;
 		}
 	}
 

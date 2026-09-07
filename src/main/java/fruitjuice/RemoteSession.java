@@ -15,7 +15,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayDeque;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class RemoteSession {
 
@@ -33,9 +34,12 @@ public class RemoteSession {
 
     private Thread outThread;
 
-    private ArrayDeque<String> inQueue = new ArrayDeque<String>();
+    // Concurrent, not ArrayDeque. inQueue is written by the socket thread and
+    // drained by the main server thread; outQueue is the reverse. Neither was
+    // synchronised on both sides, and ArrayDeque is not thread-safe.
+    private Queue<String> inQueue = new LinkedBlockingQueue<String>();
 
-    private ArrayDeque<String> outQueue = new ArrayDeque<String>();
+    private Queue<String> outQueue = new LinkedBlockingQueue<String>();
 
     public boolean running = true;
 
@@ -43,17 +47,21 @@ public class RemoteSession {
 
     public FruitJuicePlugin plugin;
 
-    public ArrayDeque<PlayerInteractEvent> interactEventQueue = new ArrayDeque<PlayerInteractEvent>();
+    // Bounded, and concurrent because chat events arrive on an async thread.
+    // A client that never polls -- scratch never polls chat or arrows -- used to
+    // accumulate events for the whole life of the connection.
+    public static final int MAX_EVENT_QUEUE = 1000;
 
-    public ArrayDeque<ProjectileHitEvent> arrowHitEventQueue = new ArrayDeque<ProjectileHitEvent>();
+    public Queue<PlayerInteractEvent> interactEventQueue = new LinkedBlockingQueue<PlayerInteractEvent>(MAX_EVENT_QUEUE);
 
-    public ArrayDeque<AsyncPlayerChatEvent> chatPostedQueue = new ArrayDeque<AsyncPlayerChatEvent>();
+    public Queue<ProjectileHitEvent> arrowHitEventQueue = new LinkedBlockingQueue<ProjectileHitEvent>(MAX_EVENT_QUEUE);
+
+    public Queue<AsyncPlayerChatEvent> chatPostedQueue = new LinkedBlockingQueue<AsyncPlayerChatEvent>(MAX_EVENT_QUEUE);
 
     private int maxCommandsPerTick = 9000;
 
     private boolean closed = false;
 
-    private Player attachedPlayer = null;
 
     private CmdEntity cmdEntity;
     private CmdEvent cmdEvent;
@@ -106,18 +114,24 @@ public class RemoteSession {
         return socket;
     }
 
+    // Drops the oldest event when the queue is full rather than throwing or
+    // growing forever. offer() returns false on a full bounded queue.
+    private <T> void queueEvent(Queue<T> queue, T event) {
+        while (!queue.offer(event)) {
+            if (queue.poll() == null) return;
+        }
+    }
+
     public void queuePlayerInteractEvent(PlayerInteractEvent event) {
-        //plugin.getLogger().info(event.toString());
-        interactEventQueue.add(event);
+        queueEvent(interactEventQueue, event);
     }
 
     public void queueChatPostedEvent(AsyncPlayerChatEvent event) {
-        //plugin.getLogger().info(event.toString());
-        chatPostedQueue.add(event);
+        queueEvent(chatPostedQueue, event);
     }
 
     public void queueArrowHitEvent(ProjectileHitEvent event){
-        arrowHitEventQueue.add(event);
+        queueEvent(arrowHitEventQueue, event);
     }
 
     /**
@@ -155,12 +169,27 @@ public class RemoteSession {
     }
 
     protected void handleLine(String line) {
-        //System.out.println(line);
-        plugin.getLogger().info(line);
-        String methodName = line.substring(0, line.indexOf("("));
-        //split string into args, handles , inside " i.e. ","
-        String[] args = line.substring(line.indexOf("(") + 1, line.length() - 1).split(",");
-        //System.out.println(methodName + ":" + Arrays.toString(args));
+        // FINE, not INFO. This runs for every single command on the main server
+        // thread, so a build of a few hundred thousand blocks wrote a few hundred
+        // thousand lines to the log, and on a Pi that is SD card I/O in the
+        // critical path. Raise the level in server logging config to see them.
+        plugin.getLogger().fine(line);
+
+        if (line.isEmpty()) return;
+
+        // Validate before parsing. This used to be an unguarded substring() that
+        // threw on any line without a bracket -- a port scanner, a stray newline --
+        // and the throw escaped before handleCommand could answer, so the client
+        // waited forever for a reply that was never sent.
+        int open = line.indexOf("(");
+        if (open < 0 || !line.endsWith(")")) {
+            plugin.getLogger().warning("Ignoring malformed command: " + line);
+            send("Fail,Malformed command. Expected name(arguments), got: " + line);
+            return;
+        }
+
+        String methodName = line.substring(0, open);
+        String[] args = line.substring(open + 1, line.length() - 1).split(",");
         handleCommand(methodName, args);
     }
 
@@ -195,17 +224,11 @@ public class RemoteSession {
 
                 // chat.post
             } else if (c.equals("chat.post")) {
-                //create chat message from args as it was split by ,
-                String chatMessage = "";
-                int count;
-                for (count = 0; count < args.length; count++) {
-
-                    chatMessage = chatMessage + args[count] + " ";
-                }
-                plugin.getLogger().info(chatMessage);
-                //System.out.println(chatMessage);
-
-                chatMessage = chatMessage.substring(0, chatMessage.length() - 1);
+                // handleLine split the line on commas, so rejoin with commas to get
+                // the message back exactly. Joining with a space used to turn
+                // "Hello, world!" into "Hello  world!" and made it impossible to
+                // put a comma in chat at all.
+                String chatMessage = String.join(",", args);
                 server.broadcastMessage(chatMessage);
 
                 // not a command which is supported
@@ -222,93 +245,13 @@ public class RemoteSession {
         }
     }
 
-    // create a cuboid of lots of blocks
-    private void setCuboid(Location pos1, Location pos2, String blockType, byte data) {
-        int minX, maxX, minY, maxY, minZ, maxZ;
-        World world = pos1.getWorld();
-        minX = pos1.getBlockX() < pos2.getBlockX() ? pos1.getBlockX() : pos2.getBlockX();
-        maxX = pos1.getBlockX() >= pos2.getBlockX() ? pos1.getBlockX() : pos2.getBlockX();
-        minY = pos1.getBlockY() < pos2.getBlockY() ? pos1.getBlockY() : pos2.getBlockY();
-        maxY = pos1.getBlockY() >= pos2.getBlockY() ? pos1.getBlockY() : pos2.getBlockY();
-        minZ = pos1.getBlockZ() < pos2.getBlockZ() ? pos1.getBlockZ() : pos2.getBlockZ();
-        maxZ = pos1.getBlockZ() >= pos2.getBlockZ() ? pos1.getBlockZ() : pos2.getBlockZ();
-
-        for (int x = minX; x <= maxX; ++x) {
-            for (int z = minZ; z <= maxZ; ++z) {
-                for (int y = minY; y <= maxY; ++y) {
-                    updateBlock(world, x, y, z, blockType, data);
-                }
-            }
-        }
-    }
-
-    // get a cuboid of lots of blocks
-    private String getBlocks(Location pos1, Location pos2) {
-        StringBuilder blockData = new StringBuilder();
-
-        int minX, maxX, minY, maxY, minZ, maxZ;
-        World world = pos1.getWorld();
-        minX = pos1.getBlockX() < pos2.getBlockX() ? pos1.getBlockX() : pos2.getBlockX();
-        maxX = pos1.getBlockX() >= pos2.getBlockX() ? pos1.getBlockX() : pos2.getBlockX();
-        minY = pos1.getBlockY() < pos2.getBlockY() ? pos1.getBlockY() : pos2.getBlockY();
-        maxY = pos1.getBlockY() >= pos2.getBlockY() ? pos1.getBlockY() : pos2.getBlockY();
-        minZ = pos1.getBlockZ() < pos2.getBlockZ() ? pos1.getBlockZ() : pos2.getBlockZ();
-        maxZ = pos1.getBlockZ() >= pos2.getBlockZ() ? pos1.getBlockZ() : pos2.getBlockZ();
-
-        for (int y = minY; y <= maxY; ++y) {
-            for (int x = minX; x <= maxX; ++x) {
-                for (int z = minZ; z <= maxZ; ++z) {
-                    blockData.append(world.getBlockAt(x, y, z).getType().name() + ",");
-                }
-            }
-        }
-
-        return blockData.substring(0, blockData.length() > 0 ? blockData.length() - 1 : 0);    // We don't want last comma
-    }
-
-    // updates a block
-    private void updateBlock(World world, Location loc, String blockType, byte blockData) {
-        Block thisBlock = world.getBlockAt(loc);
-        updateBlock(thisBlock, blockType, blockData);
-    }
-
-    private void updateBlock(World world, int x, int y, int z, String blockType, byte blockData) {
-        Block thisBlock = world.getBlockAt(x, y, z);
-        updateBlock(thisBlock, blockType, blockData);
-    }
-
-    private void updateBlock(Block thisBlock, String blockType, byte blockData) {
-        // check to see if the block is different - otherwise leave it
-        blockType = blockType.toUpperCase();
-        if ((thisBlock.getType() != Material.valueOf(blockType))) {
-            thisBlock.setType(Material.valueOf(blockType.toUpperCase()));
-//			thisBlock.setTypeIdAndData(blockType, blockData, true);
-        }
-    }
-
-    // gets the current player
-    public Player getCurrentPlayer() {
-        if (!serverHasPlayer()) {
-            send("Fail,There are no players in the server.");
-            return null;
-        }
-        Player player = attachedPlayer;
-        // if the player hasnt already been retreived for this session, go and get it.
-        if (player == null) {
-            player = plugin.getHostPlayer();
-            attachedPlayer = player;
-        }
-        return player;
-    }
-
-    private boolean serverHasPlayer() {
-        return !Bukkit.getOnlinePlayers().isEmpty();
-    }
-
     public Location parseRelativeBlockLocation(String xstr, String ystr, String zstr) {
-        int x = (int) Double.parseDouble(xstr);
-        int y = (int) Double.parseDouble(ystr);
-        int z = (int) Double.parseDouble(zstr);
+        // floor, not a cast. Casting truncates toward zero, so -0.5 became block 0
+        // rather than block -1 and everything at a negative fractional coordinate
+        // addressed the wrong block.
+        int x = (int) Math.floor(Double.parseDouble(xstr));
+        int y = (int) Math.floor(Double.parseDouble(ystr));
+        int z = (int) Math.floor(Double.parseDouble(zstr));
         return parseLocation(origin.getWorld(), x, y, z, origin.getBlockX(), origin.getBlockY(), origin.getBlockZ());
     }
 
@@ -363,9 +306,7 @@ public class RemoteSession {
 
     public void send(String a) {
         if (pendingRemoval) return;
-        synchronized (outQueue) {
-            outQueue.add(a);
-        }
+        outQueue.add(a);
     }
 
     public void close() {
@@ -418,7 +359,10 @@ public class RemoteSession {
                 } catch (Exception e) {
                     // if its running raise an error
                     if (running) {
-                        if (e.getMessage().equals("Connection reset")) {
+                        // constant first: getMessage() is null for plenty of
+                        // exceptions, and an NPE raised in here killed the thread
+                        // silently.
+                        if ("Connection reset".equals(e.getMessage())) {
                             plugin.getLogger().info("Connection reset");
                         } else {
                             e.printStackTrace();

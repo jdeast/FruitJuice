@@ -16,6 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FruitJuicePlugin extends JavaPlugin implements Listener {
 
@@ -31,7 +32,6 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 
 	public List<RemoteSession> sessions;
 
-	public Player hostPlayer = null;
 
 	private LocationType locationType;
 
@@ -73,11 +73,23 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 		getLogger().info("Using " + hitClickType.name() + " clicks for hits");
 
 		//setup session array
-		sessions = new ArrayList<RemoteSession>();
+		// Copy-on-write: onChatPosted iterates this from an async event thread while
+		// handleConnection adds to it and the tick handler removes from it.
+		sessions = new CopyOnWriteArrayList<RemoteSession>();
 
 		//create new tcp listener thread
+		// config.yml has always documented a hostname setting -- "localhost would
+		// prevent remote clients from connecting" -- but nothing ever read it, so it
+		// bound every interface regardless and the setting was a lie. Blank still
+		// means all interfaces, which is the documented default.
+		String hostname = this.getConfig().getString("hostname");
+		InetSocketAddress bindAddress = (hostname == null || hostname.trim().isEmpty())
+				? new InetSocketAddress(port)
+				: new InetSocketAddress(hostname.trim(), port);
+		getLogger().info("Listening on " + bindAddress);
+
 		try {
-			serverThread = new ServerListenerThread(this, new InetSocketAddress(port));
+			serverThread = new ServerListenerThread(this, bindAddress);
 			new Thread(serverThread).start();
 			getLogger().info("ThreadListener Started");
 		} catch (Exception e) {
@@ -140,13 +152,21 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 			newSession.kick("You've been banned from this server!");
 			return;
 		}
-		synchronized (sessions) {
-			sessions.add(newSession);
-		}
+		sessions.add(newSession);
 	}
 
+	// Matches on getName(), the account name. getPlayerListName() is the tab-list
+	// entry, which other plugins routinely decorate with colours, prefixes or
+	// ranks; matching on that made world.getPlayerId(name) fail as soon as any of
+	// them was installed. The list name is still accepted as a fallback so
+	// existing scripts that pass it keep working.
 	public Player getNamedPlayer(String name) {
 		if (name == null) return null;
+		for (Player player : Bukkit.getOnlinePlayers()) {
+			if (name.equals(player.getName())) {
+				return player;
+			}
+		}
 		for (Player player : Bukkit.getOnlinePlayers()) {
 			if (name.equals(player.getPlayerListName())) {
 				return player;
@@ -156,7 +176,6 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 	}
 
 	public Player getHostPlayer() {
-		if (hostPlayer != null) return hostPlayer;
 		for (Player player : Bukkit.getOnlinePlayers()) {
 			return player;
 		}
@@ -170,12 +189,13 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 				return p;
 			}
 		}
-		//check all entities in host player's world
-		Player player = getHostPlayer();
-		World w = player.getWorld();
-		for (Entity e : w.getEntities()) {
-			if (e.getEntityId() == id) {
-				return e;
+		// Search every loaded world rather than the host player's, which used to
+		// NPE whenever nobody was online.
+		for (World w : getServer().getWorlds()) {
+			for (Entity e : w.getEntities()) {
+				if (e.getEntityId() == id) {
+					return e;
+				}
 			}
 		}
 		return null;
@@ -205,19 +225,20 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 			e.printStackTrace();
 		}
 
-		sessions = null;
-		serverThread = null;
+		// clear rather than null: other threads may still be shutting down and a
+		// null here turns an orderly stop into a pile of NPEs.
+		sessions.clear();
 		getLogger().info("Fruit Juice Stopped");
 	}
 
 	private class TickHandler implements Runnable {
 		public void run() {
-			Iterator<RemoteSession> sI = sessions.iterator();
-			while (sI.hasNext()) {
-				RemoteSession s = sI.next();
+			// A CopyOnWriteArrayList iterator does not support remove(), but its
+			// iteration is over a snapshot, so removing from the list here is safe.
+			for (RemoteSession s : sessions) {
 				if (s.pendingRemoval) {
 					s.close();
-					sI.remove();
+					sessions.remove(s);
 				} else {
 					s.tick();
 				}

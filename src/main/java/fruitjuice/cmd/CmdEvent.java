@@ -20,6 +20,7 @@ public class CmdEvent {
         if (command.equals("clear")) {
             session.interactEventQueue.clear();
             session.chatPostedQueue.clear();
+            session.arrowHitEventQueue.clear();
 
             // events.block.hits
         } else if (command.equals("block.hits")) {

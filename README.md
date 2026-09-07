@@ -46,7 +46,9 @@ Anything that returns a value replies with a single line. Anything that fails re
  - `world.getPlayerIds()` -> entity ids of everyone online, separated by `|`
  - `world.getPlayerId(name)` -> that player's entity id
  - `world.getEntityTypes()` -> spawnable entity types as `id,NAME` pairs separated by `|`
- - `world.spawnEntity(x, y, z, entityTypeId)` -> the new entity's id
+ - `world.spawnEntity(x, y, z, entityType)` -> the new entity's id. Takes a name
+   (`PIG`, `WARDEN`) or an old numeric id. Names are the only way to reach anything
+   added since Minecraft 1.13, which has no numeric id.
  - `world.createExplosion(x, y, z, power)` -> none
  - `world.setSign(x, y, z, signType, facing, line1, line2, line3, line4)` -> none. `signType` is a material such as `OAK_SIGN`; `facing` is a direction name, not a number.
  - `world.setWallSign(x, y, z, signType, facing, line1, line2, line3, line4)` -> none
@@ -65,6 +67,8 @@ So `player.getPos()` and `player.getPos(42)` are both valid, as are `player.setP
  - `player.getPitch()` / `player.setPitch(pitch)` -> pitch in degrees
  - `player.getFoodLevel()` / `player.setFoodLevel(level)`
  - `player.getHealth()` / `player.setHealth(health)`
+ - `player.addForce(x, y, z)` -> none. Adds to the player's velocity, which launches
+   them. Values are small: 1 is roughly 20 blocks per second, so 0.5 is a decent jump.
  - `player.sendTitle(title, subtitle, fadeIn, stay, fadeOut)` -> none
  - `player.setPlayer(name)` -> none. Attaches this session to a named player.
 
@@ -77,6 +81,7 @@ The same positional commands, but the entity id is required rather than optional
  - `entity.getDirection(id)` / `entity.setDirection(id, x, y, z)`
  - `entity.getRotation(id)` / `entity.setRotation(id, yaw)`
  - `entity.getPitch(id)` / `entity.setPitch(id, pitch)`
+ - `entity.addForce(id, x, y, z)` -> none. Adds to the entity's velocity.
  - `entity.getName(id)` -> the entity's name
 
 ### events
@@ -88,9 +93,15 @@ The same positional commands, but the entity id is required rather than optional
 
 Which mouse button counts as a "hit" is set by `hitclick` in the config.
 
+**A hit only registers while the player is holding a sword.** Any sword will do, but
+with anything else in hand -- or an empty hand -- `events.block.hits()` stays empty and
+gives no clue why. This is inherited from RaspberryJuice and exists so that ordinary
+building does not flood the event queue.
+
 ### chat
 
- - `chat.post(message)` -> broadcasts the message to everyone on the server
+ - `chat.post(message)` -> broadcasts the message to everyone on the server. Commas in
+   the message are preserved.
 
 ### Not implemented
 

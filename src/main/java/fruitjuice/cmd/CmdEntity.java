@@ -24,8 +24,12 @@ public class CmdEntity {
 		Entity entity = plugin.getEntity(Integer.parseInt(args[0]));
 
 		if (entity == null) {
+			// Must return. Falling through here NPEs on entity.getLocation(), the
+			// outer handler answers with a second Fail, and the client is then one
+			// reply out of step for the rest of the session.
 			plugin.getLogger().info("Entity [" + args[0] + "] not found.");
-			session.send("Fail,This entity identity not exist");
+			session.send("Fail,No entity found with ID: " + args[0]);
+			return;
 		}
 
 		// entity.getTile
@@ -51,6 +55,13 @@ public class CmdEntity {
 			Location loc = entity.getLocation();
 
 			entity.teleport(session.parseRelativeLocation(x, y, z, loc.getPitch(), loc.getYaw()));
+
+			// entity.addForce
+		} else if (command.equals("addForce")) {
+			double fx = Double.parseDouble(args[1]);
+			double fy = Double.parseDouble(args[2]);
+			double fz = Double.parseDouble(args[3]);
+			entity.setVelocity(entity.getVelocity().add(new Vector(fx, fy, fz)));
 
 			// entity.setDirection
 		} else if (command.equals("setDirection")) {

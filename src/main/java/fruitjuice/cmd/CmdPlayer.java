@@ -105,6 +105,7 @@ public class CmdPlayer {
 		ARG_COUNTS.put("getHealth", 0);
 		ARG_COUNTS.put("setHealth", 1);
 		ARG_COUNTS.put("sendTitle", 5);
+		ARG_COUNTS.put("addForce", 3);
 	}
     public void execute(String command, String[] args) {
 
@@ -189,6 +190,15 @@ public class CmdPlayer {
 		} else if (command.equals("setPlayer")) {
 			String playerName = args[0];
 			getCurrentPlayer(playerName);
+
+			// player.addForce
+		} else if (command.equals("addForce")) {
+			// Doubles, not ints. Velocity is a float vector and 1 is already about 20
+			// blocks a second, so integers only give you "still" or "launched".
+			double fx = Double.parseDouble(args[0]);
+			double fy = Double.parseDouble(args[1]);
+			double fz = Double.parseDouble(args[2]);
+			currentPlayer.setVelocity(currentPlayer.getVelocity().add(new Vector(fx, fy, fz)));
 
 			// player.setDirection
 		} else if (command.equals("setDirection")) {
