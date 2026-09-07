@@ -1,0 +1,9 @@
+# Shell scripts must keep LF endings whatever platform they are checked out on.
+# A CRLF shebang line fails on Linux with an unhelpful error:
+#     /bin/bash^M: bad interpreter: No such file or directory
+# which is easy to hit by editing on Windows and copying to the server.
+*.sh text eol=lf
+
+# Same reasoning: these are read by tools that do not want carriage returns.
+*.yml text eol=lf
+*.yaml text eol=lf

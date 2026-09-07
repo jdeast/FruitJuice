@@ -70,3 +70,6 @@ mvnw.cmd
 # committed. Ship a .env.example with empty placeholders instead.
 .env
 */.env
+
+# Local server configuration: real paths, hostname and ssh alias.
+server/config.sh
