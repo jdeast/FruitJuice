@@ -225,6 +225,12 @@ mvn package
  - 0.1.0 - Initial release
  - 0.2.0 - Updates from integer block IDs to string block IDs broke the way directional blocks work. Partial fix.
  - 0.3.0 - [minecraftdawn]'s refactoring of cmdPlayer broke player selection implemented in mcpi_e. Fixed.
+ - 0.4.0 - Fixed player selection by entity id, which silently drove the wrong player and
+   corrupted coordinates. Beds, doors and tall plants now place as the two blocks they are.
+   Blocks can be given a facing, and no longer default to WEST. Added world.getBlockData and
+   world.getBlockTypes, so the scratch block list comes from the server instead of a hardcoded
+   list that went stale every release. Note plugin.yml had reported 0.1.0 since 0.1.0; it now
+   matches.
 
 ## Contributors
 
