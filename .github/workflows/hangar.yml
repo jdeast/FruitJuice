@@ -1,0 +1,121 @@
+name: Publish to Hangar
+
+# Pushes a release to https://hangar.papermc.io/jdeast/FruitJuice, which is
+# where people who find the plugin through PaperMC rather than GitHub get it.
+#
+# It had been sitting at 0.2.0 from June 2023 -- three years and three
+# versions behind, still claiming 1.19-1.20 support -- while accumulating
+# downloads. Stale is worse than absent there: somebody trusts the page, runs a
+# jar older than every fix in the changelog, and hits bugs that were fixed
+# years ago.
+#
+# Triggered by a published GitHub release rather than by a tag, so the jar this
+# uploads is the exact asset release.yml built and attached. Building it a
+# second time here would risk publishing something subtly different from what
+# people download on GitHub.
+#
+# SETUP (one manual step, once):
+#   1. https://hangar.papermc.io/jdeast/FruitJuice/settings/api-keys
+#      Create a key with the "create version" permission.
+#   2. Repository Settings -> Secrets and variables -> Actions -> New secret
+#      Name: HANGAR_API_TOKEN
+#   Until that secret exists this workflow is skipped rather than failed, so a
+#   release is never held up by it.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish to Hangar, e.g. v0.5.0"
+        required: true
+
+jobs:
+  hangar:
+    name: hangar
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # A missing secret means "not set up yet", not "broken". Checking here
+      # keeps the release itself green while the token is still to be created.
+      - name: Is the API token configured?
+        id: token
+        env:
+          HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
+        run: |
+          if [ -z "${HANGAR_API_TOKEN:-}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::HANGAR_API_TOKEN is not set; skipping the Hangar upload."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Work out which release to publish
+        if: steps.token.outputs.configured == 'true'
+        id: rel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # Hangar wants the bare version; our tags are v-prefixed.
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      # The jar from the GitHub release, not a fresh build. Same bytes people
+      # downloaded there.
+      - name: Fetch the released jar
+        if: steps.token.outputs.configured == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh release download "${{ steps.rel.outputs.tag }}" \
+             --repo "${{ github.repository }}" --pattern '*.jar' --dir dist
+          ls -l dist
+          test "$(ls dist/*.jar | wc -l)" = "1" \
+            || { echo "expected exactly one jar on the release"; exit 1; }
+          echo "JAR=$(ls dist/*.jar)" >> "$GITHUB_ENV"
+
+      # The version in the jar decides what Hangar is told, rather than the tag
+      # alone -- a tag that disagrees with plugin.yml is exactly the mismatch
+      # that made the old page misleading.
+      - name: Check the jar agrees with the tag
+        if: steps.token.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          unzip -p "$JAR" plugin.yml > plugin.yml
+          IN_JAR=$(grep -E "^version:" plugin.yml | sed -E "s/^version:[[:space:]]*'?([^']*)'?/\1/")
+          echo "tag says ${{ steps.rel.outputs.version }}, jar says $IN_JAR"
+          test "$IN_JAR" = "${{ steps.rel.outputs.version }}" \
+            || { echo "the jar's version does not match the tag; refusing to publish"; exit 1; }
+
+      - name: Upload to Hangar
+        if: steps.token.outputs.configured == 'true'
+        uses: benwoo1110/hangar-upload-action@v1
+        with:
+          api_token: ${{ secrets.HANGAR_API_TOKEN }}
+          slug: FruitJuice
+          version: ${{ steps.rel.outputs.version }}
+          channel: Release
+          description: ${{ github.event.release.body }}
+          files: |
+            [
+              {
+                "path": "${{ env.JAR }}",
+                "platforms": ["PAPER"]
+              }
+            ]
+          # The pom targets Java 11 bytecode and the API is pinned at 1.20, but
+          # the nightly compile-next-api job builds green against 1.21 and the
+          # plugin runs on a 26.2 server, so the honest range is open-ended
+          # rather than the 1.19-1.20 the page claimed for three years.
+          platform_dependencies: |
+            {
+              "PAPER": ["1.20.x", "1.21.x"]
+            }
