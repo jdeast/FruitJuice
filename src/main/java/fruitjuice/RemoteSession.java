@@ -135,20 +135,34 @@ public class RemoteSession {
     }
 
     /**
+     * Point this session at a world.
+     *
+     * Every command resolves its coordinates against origin, so moving origin
+     * into another world is all it takes to build somewhere else. Which point
+     * of that world becomes the origin depends on the location setting, the
+     * same as it does when a session first starts.
+     */
+    public void useWorld(World world) {
+        switch (locationType) {
+            case ABSOLUTE:
+                this.origin = new Location(world, 0, 0, 0);
+                break;
+            case RELATIVE:
+                this.origin = world.getSpawnLocation();
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown location type " + locationType);
+        }
+    }
+
+    /**
      * called from the server main thread
      */
     public void tick() {
         if (origin == null) {
-            switch (locationType) {
-                case ABSOLUTE:
-                    this.origin = new Location(plugin.getServer().getWorlds().get(0), 0, 0, 0);
-                    break;
-                case RELATIVE:
-                    this.origin = plugin.getServer().getWorlds().get(0).getSpawnLocation();
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unknown location type " + locationType);
-            }
+            // The first world is where a session starts, which for a server
+            // built for this is the one people play in. world.setWorld moves it.
+            useWorld(plugin.getServer().getWorlds().get(0));
         }
         int processedCount = 0;
         String message;

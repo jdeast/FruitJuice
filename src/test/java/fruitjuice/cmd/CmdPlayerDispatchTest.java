@@ -116,4 +116,42 @@ class CmdPlayerDispatchTest {
         assertEquals(3, CmdPlayer.leadingPlayerId("sendTitle",
                 args("3", "title", "sub", "10", "70", "20")));
     }
+
+    // ── commands added since the arity table was written ────────────────────
+
+    @Test
+    @DisplayName("addForce takes three, so four means the first is an id")
+    void addForceFollowsTheSameRule() {
+        assertNull(CmdPlayer.leadingPlayerId("addForce", args("0", "0.5", "0")));
+        assertEquals(42, CmdPlayer.leadingPlayerId("addForce", args("42", "0", "0.5", "0")));
+    }
+
+    @Test
+    @DisplayName("getWorld takes none, so one argument means it is an id")
+    void getWorldFollowsTheSameRule() {
+        assertNull(CmdPlayer.leadingPlayerId("getWorld", args()));
+        assertEquals(42, CmdPlayer.leadingPlayerId("getWorld", args("42")));
+    }
+
+    @Test
+    @DisplayName("every command in the arity table round-trips an id")
+    void everyCommandAcceptsAnIdInFrontOfItsArguments() {
+        // A command added to the table without thinking about the leading id is
+        // the shape of bug this whole scheme exists to prevent, so check the
+        // table itself rather than a handful of examples.
+        for (String command : CmdPlayer.ARG_COUNTS.keySet()) {
+            int arity = CmdPlayer.ARG_COUNTS.get(command);
+            String[] withoutId = new String[arity];
+            String[] withId = new String[arity + 1];
+            withId[0] = "42";
+            for (int i = 0; i < arity; i++) {
+                withoutId[i] = "1";
+                withId[i + 1] = "1";
+            }
+            assertNull(CmdPlayer.leadingPlayerId(command, withoutId),
+                    command + " read an id that was not sent");
+            assertEquals(42, CmdPlayer.leadingPlayerId(command, withId),
+                    command + " did not read the id it was sent");
+        }
+    }
 }

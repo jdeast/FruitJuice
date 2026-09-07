@@ -86,7 +86,7 @@ public class CmdPlayer {
 	// pyncraft path (playerId = [], which flattens away) send no ID at all.
 	// Commands absent from this table never get ID treatment -- setPlayer takes
 	// a player name, not an ID.
-	private static final Map<String, Integer> ARG_COUNTS = new HashMap<>();
+	static final Map<String, Integer> ARG_COUNTS = new HashMap<>();
 	static {
 		ARG_COUNTS.put("getTile", 0);
 		ARG_COUNTS.put("setTile", 3);
@@ -106,6 +106,7 @@ public class CmdPlayer {
 		ARG_COUNTS.put("setHealth", 1);
 		ARG_COUNTS.put("sendTitle", 5);
 		ARG_COUNTS.put("addForce", 3);
+		ARG_COUNTS.put("getWorld", 0);
 	}
 	/**
 	 * A no-argument call parses to a single empty string, not an empty array.
@@ -203,6 +204,13 @@ public class CmdPlayer {
 		} else if (command.equals("setPlayer")) {
 			String playerName = args[0];
 			getCurrentPlayer(playerName);
+
+			// player.getWorld
+		} else if (command.equals("getWorld")) {
+			// Where the player actually is, which is not necessarily where this
+			// session is building -- world.setWorld moves the session, not the
+			// player.
+			session.send(currentPlayer.getWorld().getName());
 
 			// player.addForce
 		} else if (command.equals("addForce")) {

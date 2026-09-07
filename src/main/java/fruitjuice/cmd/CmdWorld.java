@@ -67,6 +67,34 @@ public class CmdWorld {
 			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
 			session.send(world.getBlockAt(loc).getBlockData().getAsString());
 
+			// world.getWorlds
+		} else if (command.equals("getWorlds")) {
+			// Everything used to run against getWorlds().get(0), so the nether,
+			// the end and any second world were unreachable -- even though the
+			// setup guide recommends a separate flat creative world for scratch
+			// and python.
+			StringBuilder names = new StringBuilder();
+			for (World w : Bukkit.getWorlds()) {
+				if (names.length() > 0) names.append("|");
+				names.append(w.getName());
+			}
+			session.send(names.toString());
+
+			// world.getCurrentWorld
+		} else if (command.equals("getCurrentWorld")) {
+			session.send(world.getName());
+
+			// world.setWorld
+		} else if (command.equals("setWorld")) {
+			World target = Bukkit.getWorld(args[0].trim());
+			if (target == null) {
+				session.send("Fail,No world called " + args[0] +
+						". Use world.getWorlds() to see the names.");
+				return;
+			}
+			session.useWorld(target);
+			session.send(target.getName());
+
 			// world.getBlockTypes
 		} else if (command.equals("getBlockTypes")) {
 			// The authoritative list of placeable materials for THIS server version.

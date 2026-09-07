@@ -54,6 +54,14 @@ Anything that returns a value replies with a single line. Anything that fails re
  - `world.createExplosion(x, y, z, power)` -> none
  - `world.setSign(x, y, z, signType, facing, line1, line2, line3, line4)` -> none. `signType` is a material such as `OAK_SIGN`; `facing` is a direction name, not a number.
  - `world.setWallSign(x, y, z, signType, facing, line1, line2, line3, line4)` -> none
+ - `world.getWorlds()` -> the names of every world on the server, separated by `|`, e.g. `world|world_nether|world_the_end`
+ - `world.getCurrentWorld()` -> the name of the world this session is building in
+ - `world.setWorld(name)` -> the name it switched to. Points this session at another world; every later coordinate is read in that world. Replies `Fail,` if there is no world by that name.
+
+Every session starts in the server's first world. `world.setWorld` moves only the
+session, not any player, so a script can build in a flat creative world while
+people carry on playing somewhere else. Where in the new world the origin lands
+follows the `location` config setting, the same as it does at startup.
 
 ### player
 
@@ -71,6 +79,7 @@ So `player.getPos()` and `player.getPos(42)` are both valid, as are `player.setP
  - `player.getHealth()` / `player.setHealth(health)`
  - `player.addForce(x, y, z)` -> none. Adds to the player's velocity, which launches
    them. Values are small: 1 is roughly 20 blocks per second, so 0.5 is a decent jump.
+ - `player.getWorld()` -> the name of the world the player is actually in, which is not necessarily the one this session is building in
  - `player.sendTitle(title, subtitle, fadeIn, stay, fadeOut)` -> none
  - `player.setPlayer(name)` -> none. Attaches this session to a named player.
 
