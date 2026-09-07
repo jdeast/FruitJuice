@@ -25,10 +25,21 @@ public class CmdPlayer {
 		return !Bukkit.getOnlinePlayers().isEmpty();
 	}
 
+	/**
+	 * The player this session acts on, or null if there is nobody to act on.
+	 *
+	 * Reports nothing to the client. It used to send the "no players" failure
+	 * itself AND return null, and its one caller sent the same failure again on
+	 * seeing the null -- so every player command produced two replies whenever
+	 * the server was empty. The protocol is strictly one reply per command, so
+	 * the extra one was read as the answer to the NEXT command, and every reply
+	 * after it was off by one for the life of the session.
+	 *
+	 * Answering is the caller's job precisely so it happens exactly once.
+	 */
 	private Player getCurrentPlayer() {
 		// if no players, return null
 		if (!serverHasPlayer()) {
-			session.send("Fail,There are no players in the server.");
 			return null;
 		} 
 
@@ -44,11 +55,16 @@ public class CmdPlayer {
 		return player;
 	}
 
+	/**
+	 * As above, by name. Also silent, and for a second reason: its caller is
+	 * setPlayer, which answers nothing at all when it succeeds. A failure sent
+	 * from in here would be a reply to a command the client is not waiting on,
+	 * which desynchronises the session just as surely as sending two.
+	 */
 	private Player getCurrentPlayer(String name) {
 
 		// if no players, return null
 		if (!serverHasPlayer()) {
-			session.send("Fail,There are no players in the server.");
 			return null;
 		} 
 
@@ -154,6 +170,7 @@ public class CmdPlayer {
 			currentPlayer = getCurrentPlayer();
 		}
 		if (currentPlayer == null) {
+			// The one place this is reported, for every player command.
 			session.send("Fail,There are no players in the server.");
 			return;
 		}
