@@ -124,6 +124,26 @@ pyncraft still has methods for these, and they will come back `Fail,... is not s
  - `world.setting`
  - `world.getBlockWithData` -- superseded by `world.getBlockData`
 
+## Running scripts from in-game
+
+`/py <script>` runs one of the server's Python scripts without leaving the game, which is useful when a class is already in Minecraft and nobody wants to alt-tab to a terminal. Borrowed from [Raspberry Jam Mod](https://github.com/arpruss/raspberryjammod), which has had it for years.
+
+It is **off by default**. Turn it on in `config.yml`:
+
+```yaml
+python:
+  enabled: true
+  command: python3
+  scripts: scripts        # plugins/FruitJuice/scripts/
+  timeout: 60
+```
+
+Drop `.py` files in `plugins/FruitJuice/scripts/`, then `/py` on its own lists them and `/py hello` runs one. Tab completion works. Each script gets `PYNCRAFT_HOST`, `PYNCRAFT_PORT` and `PYNCRAFT_PLAYER` in its environment, so it can connect back and find whoever started it without hardcoding anything.
+
+**Why it is off by default.** A script runs as the user the server runs as. Minecraft op means near-total control of the *world*, but it does not otherwise grant code execution on the *machine*, and this closes that gap for anyone with the `fruitjuice.py` permission (ops, by default). That is a deliberate decision, not something to leave on because it might be handy.
+
+It runs **named scripts from that one directory** and has no way to evaluate code typed into chat. The containment check runs after following symlinks, so a link inside the directory pointing elsewhere is refused rather than followed.
+
 ## Config
 
 Edit `config.yml` in the plugin's folder:

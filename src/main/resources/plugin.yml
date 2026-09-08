@@ -6,3 +6,16 @@ name: FruitJuice
 startup: postworld
 version: '0.5.1'
 api-version: '1.13'
+
+commands:
+  py:
+    description: Run one of the server's Python scripts
+    usage: /py <script> [arguments]
+    permission: fruitjuice.py
+
+permissions:
+  fruitjuice.py:
+    description: Run Python scripts on the server from in-game
+    # Op by default, and worth understanding before widening: the scripts run
+    # as the user the server runs as. Being op does not otherwise grant that.
+    default: op

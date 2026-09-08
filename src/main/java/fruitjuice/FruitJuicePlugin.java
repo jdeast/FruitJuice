@@ -82,6 +82,16 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 		// prevent remote clients from connecting" -- but nothing ever read it, so it
 		// bound every interface regardless and the setting was a lie. Blank still
 		// means all interfaces, which is the documented default.
+		// /py, which is inert unless python.enabled is set.
+		if (getCommand("py") != null) {
+			fruitjuice.cmd.PyCommand py = new fruitjuice.cmd.PyCommand(this);
+			getCommand("py").setExecutor(py);
+			getCommand("py").setTabCompleter(py);
+			if (getConfig().getBoolean("python.enabled", false)) {
+				getLogger().info("/py is enabled; scripts run from " + getScriptsDirectory());
+			}
+		}
+
 		String hostname = this.getConfig().getString("hostname");
 		InetSocketAddress bindAddress = bindAddressFor(hostname, port);
 		getLogger().info("Listening on " + bindAddress);
@@ -158,6 +168,23 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 	// ranks; matching on that made world.getPlayerId(name) fail as soon as any of
 	// them was installed. The list name is still accepted as a fallback so
 	// existing scripts that pass it keep working.
+	/**
+	 * The directory /py runs scripts from, created if it is not there yet.
+	 *
+	 * Under the plugin's own folder rather than anywhere on disk, so what can be
+	 * run is bounded by where the server administrator put it.
+	 */
+	public java.nio.file.Path getScriptsDirectory() {
+		String configured = this.getConfig().getString("python.scripts", "scripts");
+		java.nio.file.Path dir = getDataFolder().toPath().resolve(configured);
+		try {
+			java.nio.file.Files.createDirectories(dir);
+		} catch (java.io.IOException e) {
+			getLogger().warning("Could not create the scripts directory " + dir + ": " + e);
+		}
+		return dir;
+	}
+
 	/**
 	 * Where to listen, from the configured hostname.
 	 *

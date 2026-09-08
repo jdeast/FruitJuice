@@ -11,3 +11,26 @@ location: ABSOLUTE
 
 # Determine whether hit events are triggered by LEFT clicks, RIGHT clicks or BOTH
 hitclick: LEFT
+
+# /py -- running the server's Python scripts from in-game.
+#
+# Off by default. Turning it on lets anyone with the fruitjuice.py permission
+# (ops, by default) start a process on the machine the server runs on. Minecraft
+# op does not otherwise grant that, so it is a deliberate step rather than
+# something to leave on because it might be handy.
+#
+# Only named scripts inside the scripts directory can be run; there is no way to
+# evaluate code typed into chat. A script gets PYNCRAFT_HOST, PYNCRAFT_PORT and
+# PYNCRAFT_PLAYER in its environment, so it can connect back and find whoever
+# started it without hardcoding anything.
+python:
+  enabled: false
+  # The interpreter. "python3" on most systems; give a full path if it is not
+  # on the server user's PATH.
+  command: python3
+  # Where the scripts live, relative to this plugin's folder
+  # (plugins/FruitJuice/). Created on first start.
+  scripts: scripts
+  # Seconds before a script is stopped. A build that legitimately takes longer
+  # should be given more, not left unbounded.
+  timeout: 60
