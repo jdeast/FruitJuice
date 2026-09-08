@@ -315,10 +315,27 @@ public class CmdWorld {
 		minZ = pos1.getBlockZ() < pos2.getBlockZ() ? pos1.getBlockZ() : pos2.getBlockZ();
 		maxZ = pos1.getBlockZ() >= pos2.getBlockZ() ? pos1.getBlockZ() : pos2.getBlockZ();
 
+		// Physics OFF for the whole fill.
+		//
+		// setType(Material) runs block physics for every block: each placement
+		// calls updateNeighborsAt, which walks the neighbours, which can
+		// cascade. On a cuboid that is quadratic-feeling work for a linear
+		// number of blocks, and it happens on the main server thread.
+		//
+		// This is not theoretical. Filling 768,000 blocks with physics on
+		// stalled the main thread until Paper's watchdog decided the server had
+		// hung and killed it; the stack it dumped was updateBlock ->
+		// CraftBlock.setType -> Level.setBlock -> updateNeighborsAt, all the way
+		// down.
+		//
+		// A cuboid fill is a bulk edit, and physics per block is wrong for it
+		// anyway: filling a wall of sand should leave a wall of sand, not a
+		// pile. Single setBlock keeps physics, which is where a falling block
+		// or a flowing liquid is usually what somebody meant.
 		for (int x = minX; x <= maxX; ++x) {
 			for (int z = minZ; z <= maxZ; ++z) {
 				for (int y = minY; y <= maxY; ++y) {
-					updateBlock(world, x, y, z, blockType);
+					updateBlock(world, x, y, z, blockType, false);
 				}
 			}
 		}
@@ -371,15 +388,30 @@ public class CmdWorld {
 	}
 
 	private void updateBlock(World world, int x, int y, int z, String blockType) {
+		updateBlock(world, x, y, z, blockType, true);
+	}
+
+	private void updateBlock(World world, int x, int y, int z, String blockType,
+			boolean applyPhysics) {
 		Block thisBlock = world.getBlockAt(x, y, z);
-		updateBlock(thisBlock, blockType);
+		updateBlock(thisBlock, blockType, applyPhysics);
 	}
 
 	private void updateBlock(Block thisBlock, String blockType) {
+		updateBlock(thisBlock, blockType, true);
+	}
+
+	/**
+	 * Place a block, optionally without running physics.
+	 *
+	 * applyPhysics=false skips updateNeighborsAt, which is what makes a large
+	 * fill affordable. See the note in setCuboid for what happens without it.
+	 */
+	private void updateBlock(Block thisBlock, String blockType, boolean applyPhysics) {
 		// check to see if the block is different - otherwise leave it
 		blockType = blockType.toUpperCase();
 		if ((thisBlock.getType() != Material.valueOf(blockType))) {
-			thisBlock.setType(Material.valueOf(blockType.toUpperCase()));
+			thisBlock.setType(Material.valueOf(blockType), applyPhysics);
 		}
 	}
 }
