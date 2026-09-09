@@ -93,7 +93,15 @@ jobs:
       # Cheap, and catches the whole class of "the extension no longer parses",
       # which is otherwise only discovered by a reader whose blocks vanish.
       - name: Check that the extension parses
-        run: node --check docs/scratch.js
+        run: |
+          node --check docs/scratch.js
+          node --check docs/fetch.js
+          node --check docs/gamepad.js
+
+      # The two extensions ported from arpruss/rjmscratch, and the four bugs
+      # they arrived with -- each of which failed quietly.
+      - name: Ported extensions
+        run: node test/scratch/extensions.test.js
 
       - name: Connection and fallback tests
         run: node test/scratch/connect.test.js

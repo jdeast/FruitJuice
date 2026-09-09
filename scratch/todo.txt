@@ -221,6 +221,38 @@ there. Two of these were hidden because they did not work, and hiding them
 meant nobody fixed them for years.
 
 
+10. DONE: WHAT WAS WORTH TAKING FROM THE PREDECESSOR
+----------------------------------------------------
+arpruss/rjmscratch is where this extension comes from, and the question of
+what is left to port has an answer: from the extension itself, nothing.
+rjm.js has 31 blocks and all 31 are here, plus sixteen more. The seven brought
+back in (9) are exactly his set, which is the tell: this is a fork where the
+blocks that did not survive the move to Bukkit were commented out rather than
+mended.
+
+His 21 example projects will not transplant. The opcodes differ only by
+prefix, but the block VALUES are pre-1.13 numeric ids with data bytes --
+"35,9" is cyan wool, "41,0" gold -- and Minecraft deleted those in the 1.13
+flattening. Porting one means a translation table. Worth reimplementing by
+idea rather than translating, and the ideas worth having are:
+
+    goldify / midasblock   touch a block and it turns to gold (getHit)
+    maze                   generate one, build it, walk out of it
+    clock                  a working clock
+    hilbert / dragon       space filling curves, turtle recursion
+    bridge                 build under yourself as you go
+
+Two of his other extensions are now here, MIT, notices kept, bugs fixed:
+docs/gamepad.js and docs/fetch.js. See the scratch README.
+
+Which leaves the real gap: fetch.js makes "professional data -> blocks"
+possible from Scratch, the way fetch_planet.py did for Python. Live weather
+as a landscape, today's earthquakes as towers, sunrise as a day length. Those
+are examples nobody has written yet.
+
+Effort: low each. Payoff: high, and unlike anything else in scratch/examples.
+
+
 NOTES
 -----
 - Scratch's audience starts younger than pyncraft's. An example that needs a
