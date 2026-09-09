@@ -186,6 +186,19 @@ Object.keys(revived).forEach(function (o) {
 ok("movePlayerTop stands on the ground, not in it",
    /movePlayerTop[\s\S]*?Number\(height\)\s*\+\s*1/.test(code));
 
+// The server address is remembered rather than typed into every project. An
+// example that names a server names somebody's home machine, in public.
+["connectSaved", "rememberServer", "myServer"].forEach(function (o) {
+    ok("the " + o + " block is live", opcodes.indexOf(o) >= 0);
+});
+ok("the address is kept in localStorage, not a cookie",
+   /localStorage/.test(code) && !/document\.cookie/.test(code));
+ok("reading and writing it are both wrapped",
+   /function savedServer\s*\(\)\s*\{[\s\S]*?try\s*\{/.test(code) &&
+   /function rememberServer\s*\([^)]*\)\s*\{[\s\S]*?try\s*\{/.test(code));
+ok("it is only remembered after the connection works",
+   /then\(remember\)/.test(code));
+
 // setBlocks is the one that changes what is possible rather than what is
 // available: 500 blocks in one message rather than 500 messages.
 ok("the fill block exists and uses setBlocks",

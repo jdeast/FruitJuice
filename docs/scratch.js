@@ -22,6 +22,48 @@
 // The class below is still called RJMTurtle, which is as good a record of
 // where this came from as any notice.
 
+// WHERE YOUR SERVER LIVES, REMEMBERED
+//
+// Every example project has a connect block with somebody's address in it, and
+// that somebody is whoever wrote the example. Downloading five examples used to
+// mean editing five connect blocks -- and it meant publishing a home server's
+// address in a public repository, which is nobody's idea of a good time.
+//
+// So: a connection that works is remembered, and "connect to my Minecraft"
+// uses what was remembered. Set it once and every example works.
+//
+// localStorage rather than a cookie: there is no server here to send a cookie
+// to. It is per browser and per site, so what is saved on jdeast.github.io is
+// separate from what is saved on localhost:8000 -- worth knowing if you test
+// both. It can also be switched off entirely, in a private window or by a
+// browser set to block site data, so every read and write is wrapped and a
+// refusal just means the default.
+const SERVER_KEY = "fruitjuice.server";
+const DEFAULT_IP = "localhost";
+const DEFAULT_PORT = "14711";
+
+function savedServer() {
+    try {
+        var raw = window.localStorage.getItem(SERVER_KEY);
+        if (!raw) return null;
+        var v = JSON.parse(raw);
+        if (!v || !v.ip) return null;
+        return {ip: String(v.ip), port: String(v.port || DEFAULT_PORT)};
+    } catch (e) {
+        return null;
+    }
+}
+
+function rememberServer(ip, port) {
+    try {
+        window.localStorage.setItem(SERVER_KEY,
+            JSON.stringify({ip: String(ip), port: String(port)}));
+    } catch (e) {
+        // Storage refused. Not worth interrupting a lesson over: the address
+        // works for this session, it just will not be there tomorrow.
+    }
+}
+
 class RJMTurtle {
     constructor() {
         this.block = "1";
@@ -387,14 +429,46 @@ class FruitJuice {
                     "blockType": "command",
                     "text": "connect to Minecraft on [ip] port [port]",
                     "arguments": {
+                        // A freshly dragged block comes filled in with
+                        // whatever was last connected to, so even the ordinary
+                        // connect block is typed once rather than once a project.
+                        "ip": {
+                            "type": "string",
+                            "defaultValue": (savedServer() || {}).ip || DEFAULT_IP
+                        },
+			"port":{
+                            "type": "string",
+                            "defaultValue": (savedServer() || {}).port || DEFAULT_PORT
+			},
+                    }
+		},
+		{
+                    "opcode": "connectSaved",
+                    "blockType": "command",
+                    "text": "connect to my Minecraft",
+                    "arguments": {
+                    }
+		},
+		{
+                    "opcode": "rememberServer",
+                    "blockType": "command",
+                    "text": "remember [ip] port [port] as my Minecraft",
+                    "arguments": {
                         "ip": {
                             "type": "string",
                             "defaultValue": "localhost"
                         },
-			"port":{
+                        "port": {
                             "type": "string",
                             "defaultValue": "14711"
-			},
+                        },
+                    }
+		},
+		{
+                    "opcode": "myServer",
+                    "blockType": "reporter",
+                    "text": "my Minecraft address",
+                    "arguments": {
                     }
 		},
 		{
@@ -1962,6 +2036,12 @@ class FruitJuice {
         this.port = port;
 
         var rjm = this;
+        // Remembered only once it has actually worked, so a typo is not saved
+        // and handed back tomorrow.
+        var remember = function (result) {
+            rememberServer(ip, port);
+            return result;
+        };
         // Secure first, then insecure. This replaces having two builds of the
         // extension and two URLs in the setup guide.
         return this.openSocket_p(["wss://"+ip+":"+port, "ws://"+ip+":"+port])
@@ -1970,7 +2050,25 @@ class FruitJuice {
             })).then (result => rjm.getRotation().then( result => {
                 rjm.playerRot = result;
                 rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
-            })).then(result => rjm.refreshBlockTypes());
+            })).then(result => rjm.refreshBlockTypes()).then(remember);
+    };
+    
+    // Connect to whatever was remembered, or to localhost if nothing has
+    // been. This is what the example projects use, so that an example
+    // works without anybody editing somebody else's address out of it.
+    connectSaved() {
+        var server = savedServer() || {ip: DEFAULT_IP, port: DEFAULT_PORT};
+        return this.connect_p({ip: server.ip, port: server.port});
+    };
+    
+    rememberServer({ip,port}) {
+        rememberServer(ip, port);
+    };
+    
+    myServer() {
+        var server = savedServer();
+        return server ? server.ip + ":" + server.port
+                      : DEFAULT_IP + ":" + DEFAULT_PORT + " (nothing saved yet)";
     };
     
     chat({msg}){

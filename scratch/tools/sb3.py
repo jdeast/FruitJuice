@@ -95,13 +95,49 @@ def fj(opcode, **inputs):
     return Block("FruitJuice_" + opcode, inputs)
 
 
+# THE TWO KINDS OF DROPDOWN, WHICH DO NOT LOOK DIFFERENT AND ARE NOT STORED
+# ALIKE.
+#
+# A menu declared with acceptReporters can have a reporter dropped onto it, so
+# Scratch stores it as a separate shadow BLOCK plugged into an input. A menu
+# declared as a plain array cannot, so it is stored as a FIELD on the block
+# itself, named after the argument, with no input at all:
+#
+#     getPlayerX   inputs: {}   fields: {"mode": ["0", null]}
+#     setBlock     inputs: {"b": [1, "<menu block id>"]}
+#
+# Writing the first kind as though it were the second produces a project the
+# editor quietly refuses: the blocks are all present in the JSON and none of
+# them appear on the canvas. The first three examples generated here did
+# exactly that, and showed up as an empty script area with one comment.
+#
+# So which menu is which is not a detail to remember, it is a table.
+FIELD_MENUS = {"moveMenu", "penMenu", "coordinateMenu", "turnMenu",
+               "modeMenu", "signMenu"}
+SHADOW_MENUS = {"entityMenu", "circuitMenu", "commonMenu", "dirMenu",
+                "blockMenu"}
+
+
+class FieldMenu(object):
+    """A dropdown stored as a field, named after the block's argument."""
+
+    def __init__(self, value):
+        self.value = value
+
+
 def menu(name, value):
-    """A FruitJuice dropdown, e.g. menu("commonMenu", "STONE").
+    """A FruitJuice dropdown, chosen by how scratch.js declares it.
 
     The value is the one the menu carries, not the label it shows: uppercase
     Minecraft names like STONE and LIME_CONCRETE, which is what resolveBlock
     on the other side expects.
     """
+    if name in FIELD_MENUS:
+        return FieldMenu(value)
+    if name not in SHADOW_MENUS:
+        raise ValueError(
+            "unknown menu %r: add it to FIELD_MENUS or SHADOW_MENUS after "
+            "checking whether scratch.js declares it with acceptReporters" % name)
     return Menu("FruitJuice_menu_" + name, name, value)
 
 
@@ -293,6 +329,14 @@ class Project(object):
             entry["fields"][name] = value
 
         for name, value in blk.inputs.items():
+            if isinstance(value, FieldMenu):
+                # Not an input at all: a dropdown that cannot take a reporter
+                # lives in fields, under the argument's own name.
+                # As a string: that is how the editor writes them, and a
+                # field that differs from what Scratch itself would save is
+                # asking for trouble later.
+                entry["fields"][name] = [str(value.value), None]
+                continue
             if isinstance(value, list):                      # a substack
                 if not value:
                     continue

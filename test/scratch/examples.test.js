@@ -190,6 +190,39 @@ files.forEach(function (f) {
     ok(f, problems.length === 0, problems.slice(0, 3).join("; "));
 });
 
+// No example may carry a real server address.
+//
+// Two reasons, and the second is the serious one. Whoever writes an example is
+// not whoever runs it, so a typed-in address means everybody who downloads it
+// edits a block before anything happens. And the address would be somebody's
+// actual home server, published in a public repository.
+//
+// localhost is fine. "connect to my Minecraft" is better, because it uses
+// whatever that browser last connected to.
+const ALLOWED_HOSTS = ["localhost", "127.0.0.1", "example.org", "example.com"];
+files.forEach(function (f) {
+    const raw = readFromZip(path.join(EXAMPLES, f), "project.json").toString("utf8");
+    const project = JSON.parse(raw);
+    const typed = [];
+    (project.targets || []).forEach(function (t) {
+        Object.keys(t.blocks || {}).forEach(function (id) {
+            const b = t.blocks[id];
+            if (!b || b.opcode !== "FruitJuice_connect_p") return;
+            const ip = (b.inputs || {}).ip;
+            if (ip && Array.isArray(ip[1]) && ALLOWED_HOSTS.indexOf(String(ip[1][1])) < 0) {
+                typed.push(String(ip[1][1]));
+            }
+        });
+    });
+    // Anything host-shaped anywhere in the project, ignoring asset filenames.
+    const looksLikeHost = (raw.match(/"([a-z0-9][a-z0-9.-]*\.[a-z]{2,})"/g) || [])
+        .map(function (m) { return m.slice(1, -1); })
+        .filter(function (h) { return !/\.(wav|svg|png|json)$/.test(h); })
+        .filter(function (h) { return ALLOWED_HOSTS.indexOf(h) < 0; });
+    ok(f + ": no real server address", typed.length === 0 && looksLikeHost.length === 0,
+       typed.concat(looksLikeHost).join(" "));
+});
+
 console.log("");
 if (failures) {
     console.log(failures + " failed");

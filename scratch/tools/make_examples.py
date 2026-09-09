@@ -34,11 +34,27 @@ def player_z():
     return fj("getPlayerZ", mode=menu("modeMenu", 0))
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "examples")
-HOST, PORT = "mcscratch.duckdns.org", "14711"
+
+# NO ADDRESS IN AN EXAMPLE, EVER.
+#
+# Two reasons. Whoever writes an example is not whoever runs it, so a typed-in
+# address means everyone who downloads it edits a block before anything
+# happens. And the address would be somebody's actual home server, published
+# in a public repository, which is nobody's idea of a good time.
+#
+# "connect to my Minecraft" uses whatever that browser last connected to, or
+# localhost if it has never connected to anything. Set it once -- with the
+# ordinary connect block, or with "remember ... as my Minecraft" -- and every
+# example works from then on.
+HOW_TO_SET_THE_SERVER = (
+    "\n\nTHE SERVER: this connects to whatever this browser last connected to,"
+    " or to localhost. To point it elsewhere, run the `remember ... as my"
+    " Minecraft` block once, or connect once with the ordinary connect"
+    " block -- a connection that works is remembered.")
 
 
 def connect(message):
-    return [fj("connect_p", ip=HOST, port=PORT), fj("chat", msg=message)]
+    return [fj("connectSaved"), fj("chat", msg=message)]
 
 
 # ── 1. shout at it ─────────────────────────────────────────────────────────
@@ -128,7 +144,7 @@ def be_the_controller():
            "The video stays on this machine. Scratch compares one frame with "
            "the\nnext in the browser and hands out a number; nothing is sent "
            "anywhere.\n\n"
-           "Try: raise the 25 if it twitches, lower it if it ignores you.")
+           "Try: raise the 25 if it twitches, lower it if it ignores you." + HOW_TO_SET_THE_SERVER)
 
     p.script(
         when_flag(),
