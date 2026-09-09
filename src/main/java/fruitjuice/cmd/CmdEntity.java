@@ -89,7 +89,14 @@ public class CmdEntity {
 			// entity.getRotation
 		} else if (command.equals("getRotation")) {
 
-			session.send(entity.getLocation().getYaw());
+			// Wrapped to a compass bearing, the same as player.getRotation.
+			// A player IS an entity, so entity.getRotation(playerId) and
+			// player.getRotation() are two ways of asking one question and
+			// have to give one answer. Raw here and wrapped there had them
+			// reporting 271.96 and -88.04 for the same player at the same
+			// instant -- the same direction, 360 apart, which is the kind of
+			// disagreement that gets blamed on the caller's arithmetic.
+			session.send(CmdPlayer.normalizeYaw(entity.getLocation().getYaw()));
 
 			// entity.setPitch
 		} else if (command.equals("setPitch")) {

@@ -212,6 +212,21 @@ class CmdEntityTest {
     }
 
     @Test
+    @DisplayName("getRotation reports a compass bearing, like player.getRotation")
+    void rotationIsWrappedNotRaw() {
+        // A player IS an entity, so entity.getRotation(id) and
+        // player.getRotation() are two ways of asking one question. This side
+        // used to send Bukkit's raw yaw while the other wrapped it, so the
+        // same player at the same instant came back as -88.04 here and 271.96
+        // there: the same direction, 360 apart, which gets blamed on the
+        // caller's arithmetic rather than on the server.
+        when(entity.getLocation())
+            .thenReturn(new Location(world, 10.5, 64.0, 20.5, -88.0f, 45.0f));
+        execute("getRotation");
+        verify(session).send(272.0f);
+    }
+
+    @Test
     @DisplayName("getName uses the list name for a player and the plain name otherwise")
     void nameDependsOnWhetherItIsAPlayer() {
         execute("getName");
