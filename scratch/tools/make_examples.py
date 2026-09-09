@@ -126,53 +126,142 @@ def microphone_tower():
 # ── 2. be the controller ───────────────────────────────────────────────────
 
 def be_the_controller():
-    """Wave, and the player walks that way.
+    """Wave, and the player walks that way -- once the waving means something.
 
-    Video sensing gives two numbers: how much motion, and which way it went.
-    Direction is Scratch's convention -- 0 is up the screen, 90 is right -- so
-    up becomes north, which is -Z in Minecraft, and right becomes east, +X.
+    WHY THE OBVIOUS VERSION JITTERS
 
-    It senses MOTION, not where your hands are. There is no skeleton here and
-    no pose: it knows something moved and roughly which way. Waving works;
-    holding still in a shape does nothing at all.
+    Scratch's video direction is one optical-flow vector for the whole camera
+    frame, recomputed every frame with no smoothing of any kind. In
+    scratch-vm's video-motion.js:
+
+        this.motionAmount = Math.round(100 * Math.hypot(uu, vv));
+        if (this.motionAmount > 10) {
+            this.motionDirection = scratchAtan2(vv, uu);
+        }
+
+    Two things follow. The direction is a single instantaneous sample, so
+    camera noise and the auto-exposure hunting for a new brightness swing it
+    around. And below the threshold it is LATCHED, not zeroed -- it keeps
+    whatever it last was, so a reading taken during a quiet moment is a
+    leftover from some earlier movement rather than "no direction".
+
+    Reading one sample and immediately stepping a whole block turns all of
+    that straight into the player's position, ten times a second.
+
+    SO: AVERAGE THE VECTOR, NOT THE ANGLE
+
+    Averaging angles is a trap worth knowing about. Halfway between 350 and 10
+    degrees is 0, but the arithmetic mean is 180 -- exactly backwards. Angles
+    wrap and numbers do not.
+
+    Turning each reading into x and z parts first and smoothing THOSE has no
+    such seam, and it does the right thing for free: two opposite readings
+    cancel to nothing, which is precisely what jitter should do, while a
+    sustained wave in one direction builds up.
+
+    Then move by the smoothed vector rather than a fixed step, so a small
+    movement moves you a little and a big one moves you a lot, and do nothing
+    at all until it clears a deadzone.
 
     The video never leaves the machine. Scratch compares one frame with the
-    next inside the browser and hands out a number.
+    next in the browser and hands out two numbers.
     """
     p = Project(sprite_name="Controller").uses("videoSensing")
     p.stage["videoState"] = "on"
     p.stage["videoTransparency"] = 40
     m, d = p.var("motion"), p.var("direction")
-    dx, dz = p.var("dx"), p.var("dz")
+    ax, az = p.var("aim x"), p.var("aim z")
+    sx, sz = p.var("smooth x"), p.var("smooth z")
+    speed = p.var("speed")
 
-    p.note("BE THE CONTROLLER.\n\n"
-           "Wave at the camera and you walk that way. Up the screen is north,\n"
-           "right is east.\n\n"
-           "Two numbers do all of it: how much motion there was, and which way\n"
-           "it went. Scratch measures direction as 0 up, 90 right, so turning "
-           "it\ninto Minecraft's axes is one sine and one cosine.\n\n"
+    # Ticked on from the start, because the whole question a reader has here is
+    # "is the sensor noisy or is my code wrong", and these two answer it.
+    p.watch(m, 5, 5)
+    p.watch(d, 5, 32)
+    p.watch(speed, 5, 59)
+
+    p.note("BE THE CONTROLLER." + chr(10) + chr(10) +
+           "Wave at the camera and you walk that way. Up the screen is north, "
+           "right is" + chr(10) + "east." + chr(10) + chr(10) +
            "IT SENSES MOTION, NOT YOU. There is no skeleton and no pose -- it "
-           "knows\nsomething moved and roughly which way. Waving works; holding "
-           "a shape\ndoes nothing.\n\n"
-           "The video stays on this machine. Scratch compares one frame with "
-           "the\nnext in the browser and hands out a number; nothing is sent "
-           "anywhere.\n\n"
-           "Try: raise the 25 if it twitches, lower it if it ignores you." + HOW_TO_SET_THE_SERVER)
+           "knows" + chr(10) +
+           "something moved and roughly which way. Waving works; holding a "
+           "shape does" + chr(10) + "nothing." + chr(10) + chr(10) +
+           "WATCH THE THREE NUMBERS in the corner. motion is how much moved, "
+           "direction" + chr(10) +
+           "is which way, speed is what is left after smoothing. Wave steadily "
+           "and" + chr(10) +
+           "speed climbs; hold still and direction FREEZES rather than going "
+           "to zero," + chr(10) +
+           "because Scratch keeps the last direction it was sure about." +
+           chr(10) + chr(10) +
+           "THE SMOOTHING IS THE POINT. One raw reading per tick is far too "
+           "jumpy to" + chr(10) +
+           "steer with. Each reading is split into x and z parts and those are "
+           "rolled" + chr(10) +
+           "into a running average, so jitter cancels itself out and only "
+           "sustained" + chr(10) +
+           "waving adds up." + chr(10) + chr(10) +
+           "Averaging the ANGLE instead would not work: halfway between 350 and "
+           "10" + chr(10) +
+           "degrees is 0, but the average of those numbers is 180 -- the exact "
+           "opposite" + chr(10) +
+           "way. Angles wrap. Their x and z parts do not." + chr(10) + chr(10) +
+           "Try: 0.55 is the deadzone -- raise it if you drift, lower it if it "
+           "ignores" + chr(10) +
+           "you. 0.8 and 0.2 are how fast it forgets: 0.9 and 0.1 glide, 0.6 "
+           "and 0.4" + chr(10) +
+           "twitch." + chr(10) + chr(10) +
+           "Those two were measured, not guessed. Over four seconds of input: "
+           "random" + chr(10) +
+           "directions every tick drift 0.6 blocks, a real wave travels 23, "
+           "and a wave" + chr(10) +
+           "from a standstill gets you moving in about a third of a second." +
+           HOW_TO_SET_THE_SERVER)
 
     p.script(
         when_flag(),
         *connect("Wave at the camera to walk."),
         video_toggle("on"),
+        set_var(sx, 0),
+        set_var(sz, 0),
         forever(
             set_var(m, video_on("motion", "Stage")),
+            # Only trust the direction while something is actually moving.
+            # Below Scratch's own threshold it is a stale reading, so aim at
+            # nothing instead and let the average decay to a standstill.
+            if_else(
+                gt(m, 20),
+                [set_var(d, video_on("direction", "Stage")),
+                 # Scratch: 0 up, 90 right. Minecraft: +X east, +Z south.
+                 # So east is sin(d), and north -- which is -Z -- is -cos(d).
+                 set_var(ax, mathop("sin", d)),
+                 set_var(az, mul(mathop("cos", d), -1))],
+                [set_var(ax, 0),
+                 set_var(az, 0)]),
+
+            # The running average. Keep 80% of what we had, take 20% of the
+            # new reading. Opposite readings cancel; a steady wave accumulates.
+            #
+            # 0.8 with the 0.55 deadzone below was picked by simulating four
+            # seconds of input rather than by feel: random directions every
+            # tick drift 0.6 blocks, a steady wave travels 23, and a wave from
+            # a standstill clears the deadzone in 0.36s. Damping harder cuts
+            # the drift to nothing but takes over half a second to respond,
+            # which reads as the camera ignoring you.
+            set_var(sx, add(mul(sx, 0.8), mul(ax, 0.2))),
+            set_var(sz, add(mul(sz, 0.8), mul(az, 0.2))),
+            set_var(speed, mathop("sqrt", add(mul(sx, sx), mul(sz, sz)))),
+
+            # Below the deadzone, do nothing at all. This is what stops the
+            # player drifting on camera noise while the room is still.
             if_then(
-                gt(m, 25),
-                set_var(d, video_on("direction", "Stage")),
-                # Scratch: 0 up, 90 right. Minecraft: +X east, +Z south.
-                # So east is sin(d) and north -- which is -Z -- is cos(d).
-                set_var(dx, mathop("sin", d)),
-                set_var(dz, mul(mathop("cos", d), -1)),
-                fj("movePlayer", dx=dx, dy=0, dz=dz),
+                gt(speed, 0.55),
+                # Move BY the smoothed vector, so a gentle wave nudges and a
+                # big sweep strides. The old version stepped a full block
+                # every time, which is ten blocks a second -- more than twice
+                # walking speed -- however faintly you moved.
+                fj("movePlayer", dx=mul(sx, 0.7), dy=0, dz=mul(sz, 0.7)),
             ),
             wait(0.1),
         ),

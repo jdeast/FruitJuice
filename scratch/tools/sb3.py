@@ -294,6 +294,7 @@ class Project(object):
         self.attached = []
         self.extensions = ["FruitJuice"]
         self.notes = []
+        self.watched = []
 
     def var(self, name, value=0):
         v = Var(name, value)
@@ -309,6 +310,18 @@ class Project(object):
         for e in extensions:
             if e not in self.extensions:
                 self.extensions.append(e)
+        return self
+
+    def watch(self, var, x=5, y=5):
+        """Show a variable on the stage, ticked on from the start.
+
+        Scratch has these behind a checkbox in the palette, which nobody finds
+        unless they are told. Turning one on by default is the difference
+        between a value being available and a value being SEEN -- and watching
+        a number jump about is the fastest way to learn whether a sensor is
+        noisy or your arithmetic is wrong.
+        """
+        self.watched.append((var, x, y))
         return self
 
     def note(self, text, x=-40, y=-40):
@@ -418,9 +431,21 @@ class Project(object):
                              "height": 130, "minimized": False, "text": text}
             out[bid]["comment"] = cid
         self.sprite["comments"] = comments
+        # A monitor's id must be the variable's own id, and spriteName must name
+        # the sprite that owns it -- these variables are all sprite-local, so a
+        # null spriteName here makes Scratch look for a stage variable that does
+        # not exist and drop the monitor without saying so.
+        monitors = [
+            {"id": v.id, "mode": "default", "opcode": "data_variable",
+             "params": {"VARIABLE": v.name}, "spriteName": self.sprite["name"],
+             "value": v.value, "width": 0, "height": 0, "x": x, "y": y,
+             "visible": True, "sliderMin": 0, "sliderMax": 100,
+             "isDiscrete": True}
+            for v, x, y in self.watched
+        ]
         return {
             "targets": [self.stage, self.sprite],
-            "monitors": [],
+            "monitors": monitors,
             "extensions": self.extensions,
             "meta": {"semver": "3.0.0", "vm": "0.2.0",
                      "agent": "FruitJuice scratch/tools/sb3.py"},
