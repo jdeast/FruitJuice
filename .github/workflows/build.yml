@@ -93,10 +93,46 @@ jobs:
       # Cheap, and catches the whole class of "the extension no longer parses",
       # which is otherwise only discovered by a reader whose blocks vanish.
       - name: Check that the extension parses
-        run: node --check docs/scratch.js
+        run: |
+          node --check docs/scratch.js
+          node --check docs/fetch.js
+          node --check docs/gamepad.js
+
+      # The two extensions ported from arpruss/rjmscratch, and the four bugs
+      # they arrived with -- each of which failed quietly.
+      - name: Ported extensions
+        run: node test/scratch/extensions.test.js
 
       - name: Connection and fallback tests
         run: node test/scratch/connect.test.js
+
+      # A reply is a line; a websocket frame is not a reply. websockify relays
+      # a TCP stream, so a 20KB answer arrives in eight frames and two short
+      # answers can share one. Reading a frame as a reply truncated the block
+      # list to its first 95 names and told children their server had no
+      # WHITE_CONCRETE, while placing it correctly.
+      - name: Reply framing
+        run: node test/scratch/framing.test.js
+
+      # Every failure this catches is silent in the Scratch editor: a block
+      # naming a menu that does not exist renders as an empty dropdown, an
+      # opcode with no method does nothing when clicked, and a command the
+      # plugin removed comes back as a Fail in a console nobody opens.
+      - name: Block palette and command coverage
+        run: node test/scratch/blocks.test.js
+
+      # An .sb3 is an opaque zip. Remove a block from the extension and eight
+      # example projects silently stop loading; the child just gets an editor
+      # full of grey blocks and no error anywhere.
+      - name: Example projects still load
+        run: node test/scratch/examples.test.js
+
+      # The projects are generated, so they must match their source. This
+      # compares the block graph inside each file rather than the zip bytes:
+      # zip encoding varies with the platform and the zlib build, and none of
+      # that says anything about whether the blocks changed.
+      - name: Generated examples are up to date
+        run: python scratch/tools/make_examples.py --check
 
   # Builds against a NEWER Minecraft API than the one pinned in the pom.
   #

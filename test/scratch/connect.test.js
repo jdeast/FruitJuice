@@ -83,12 +83,12 @@ global.WebSocket = function (url) {
 // A class declared inside eval stays in that scope, so hand it out explicitly.
 eval(body + "\nglobalThis.FruitJuice = FruitJuice;");
 
-const WSS = "wss://mcscratch.example.org:14711";
-const WS = "ws://mcscratch.example.org:14711";
+const WSS = "wss://localhost:14711";
+const WS = "ws://localhost:14711";
 
 function session() {
     const f = new FruitJuice();
-    f.ip = "mcscratch.example.org";
+    f.ip = "localhost";
     f.port = 14711;
     f.clear = function () {};
     f.socket = null;

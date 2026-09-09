@@ -1,0 +1,54 @@
+FruitJuice
+Copyright (c) 2025-2026 the FruitJuice contributors
+
+This product includes software developed as part of the projects listed below.
+Apache License 2.0 section 4 asks that notices travel with the code and that
+significant changes be stated; this file is the first of those, and the version
+history in README.md is the second.
+
+
+THE PLUGIN
+----------
+Derived from RaspberryJuice, a Bukkit plugin implementing the Minecraft Pi API:
+
+    https://github.com/zhuowei/RaspberryJuice
+    Licensed under the Apache License, Version 2.0.
+
+RaspberryJuice in turn implements the API of Minecraft: Pi Edition, and follows
+the shape of Mojang's mcpi. Contributions to the line reach FruitJuice through
+several hands, notably MinecraftDawn's 2019 refactoring, which moved the
+world, player and entity commands out of RemoteSession and into the CmdWorld,
+CmdPlayer and CmdEntity classes they still live in.
+
+FruitJuice is likewise Apache 2.0, so the licence is unchanged along the whole
+chain. What changed is stated in the version history: multi-world support,
+thread-safe queues, block facing, replies paired with the requests that asked
+for them, and the rest.
+
+
+THE SCRATCH EXTENSION
+---------------------
+docs/scratch.js is derived from rjm.js, the Scratch 3.0 extension for Raspberry
+Jam Mod:
+
+    https://github.com/arpruss/rjmscratch
+    MIT License. Copyright (c) 2020 arpruss (Alexander R. Pruss).
+
+Ported from a Forge mod to a Bukkit plugin with the author's help. The MIT
+notice is reproduced in full at the top of that file, as MIT requires of any
+substantial portion.
+
+docs/fetch.js and docs/gamepad.js come from the same repository unmodified in
+purpose but repaired in fact; each carries its own MIT notice.
+
+MIT permits inclusion in an Apache 2.0 work provided the notice travels with
+it, which is what the file headers do.
+
+
+THE MINECRAFT PI API ITSELF
+---------------------------
+The protocol these all speak -- world.setBlock, player.getTile, and the rest --
+originates with Mojang's Minecraft: Pi Edition and its Python library. Nothing
+of Mojang's is included here; only the shape of the conversation is the same,
+so that programs written for a Raspberry Pi in 2013 still run against a modern
+server.

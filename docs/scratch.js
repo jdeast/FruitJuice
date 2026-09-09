@@ -1,3 +1,69 @@
+// FruitJuice: a Scratch 3.0 extension for Minecraft.
+//
+// Derived from rjm.js, the Scratch extension for Raspberry Jam Mod:
+// https://github.com/arpruss/rjmscratch
+//
+//   MIT License. Copyright (c) 2020 arpruss (Alexander R. Pruss).
+//
+//   Permission is hereby granted, free of charge, to any person obtaining a
+//   copy of this software and associated documentation files (the
+//   "Software"), to deal in the Software without restriction, including
+//   without limitation the rights to use, copy, modify, merge, publish,
+//   distribute, sublicense, and/or sell copies of the Software, and to permit
+//   persons to whom the Software is furnished to do so, subject to the
+//   following conditions: the above copyright notice and this permission
+//   notice shall be included in all copies or substantial portions of the
+//   Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+//
+// Ported from Raspberry Jam Mod, a Forge mod, to FruitJuice, a Bukkit plugin,
+// with arpruss's help. Modifications copyright (c) the FruitJuice
+// contributors, licensed under Apache 2.0 -- see LICENSE and NOTICE.
+//
+// The class below is still called RJMTurtle, which is as good a record of
+// where this came from as any notice.
+
+// WHERE YOUR SERVER LIVES, REMEMBERED
+//
+// Every example project has a connect block with somebody's address in it, and
+// that somebody is whoever wrote the example. Downloading five examples used to
+// mean editing five connect blocks -- and it meant publishing a home server's
+// address in a public repository, which is nobody's idea of a good time.
+//
+// So: a connection that works is remembered, and "connect to my Minecraft"
+// uses what was remembered. Set it once and every example works.
+//
+// localStorage rather than a cookie: there is no server here to send a cookie
+// to. It is per browser and per site, so what is saved on jdeast.github.io is
+// separate from what is saved on localhost:8000 -- worth knowing if you test
+// both. It can also be switched off entirely, in a private window or by a
+// browser set to block site data, so every read and write is wrapped and a
+// refusal just means the default.
+const SERVER_KEY = "fruitjuice.server";
+const DEFAULT_IP = "localhost";
+const DEFAULT_PORT = "14711";
+
+function savedServer() {
+    try {
+        var raw = window.localStorage.getItem(SERVER_KEY);
+        if (!raw) return null;
+        var v = JSON.parse(raw);
+        if (!v || !v.ip) return null;
+        return {ip: String(v.ip), port: String(v.port || DEFAULT_PORT)};
+    } catch (e) {
+        return null;
+    }
+}
+
+function rememberServer(ip, port) {
+    try {
+        window.localStorage.setItem(SERVER_KEY,
+            JSON.stringify({ip: String(ip), port: String(port)}));
+    } catch (e) {
+        // Storage refused. Not worth interrupting a lesson over: the address
+        // works for this session, it just will not be there tomorrow.
+    }
+}
+
 class RJMTurtle {
     constructor() {
         this.block = "1";
@@ -363,14 +429,46 @@ class FruitJuice {
                     "blockType": "command",
                     "text": "connect to Minecraft on [ip] port [port]",
                     "arguments": {
+                        // A freshly dragged block comes filled in with
+                        // whatever was last connected to, so even the ordinary
+                        // connect block is typed once rather than once a project.
+                        "ip": {
+                            "type": "string",
+                            "defaultValue": (savedServer() || {}).ip || DEFAULT_IP
+                        },
+			"port":{
+                            "type": "string",
+                            "defaultValue": (savedServer() || {}).port || DEFAULT_PORT
+			},
+                    }
+		},
+		{
+                    "opcode": "connectSaved",
+                    "blockType": "command",
+                    "text": "connect to my Minecraft",
+                    "arguments": {
+                    }
+		},
+		{
+                    "opcode": "rememberServer",
+                    "blockType": "command",
+                    "text": "remember [ip] port [port] as my Minecraft",
+                    "arguments": {
                         "ip": {
                             "type": "string",
                             "defaultValue": "localhost"
                         },
-			"port":{
+                        "port": {
                             "type": "string",
                             "defaultValue": "14711"
-			},
+                        },
+                    }
+		},
+		{
+                    "opcode": "myServer",
+                    "blockType": "reporter",
+                    "text": "my Minecraft address",
+                    "arguments": {
                     }
 		},
 		{
@@ -426,7 +524,7 @@ class FruitJuice {
                         },
                     }
             },
-/*            {
+            {
                     "opcode": "haveBlock",
                     "blockType": "Boolean",
                     "text": "have [b] at ([x],[y],[z])",
@@ -449,8 +547,8 @@ class FruitJuice {
                             "defaultValue": "0"
                         },
                     }
-            },             */
-/*            {
+            },             
+            {
                     "opcode": "onBlock",
                     "blockType": "Boolean",
                     "text": "player on [b]",
@@ -461,7 +559,7 @@ class FruitJuice {
                             "menu": "blockMenu"
                         },
                     }
-            }, */
+            }, 
             {
                     "opcode": "getPlayerX",
                     "blockType": "reporter",
@@ -558,13 +656,13 @@ class FruitJuice {
                         },
                     }
             },
-/*            {
+            {
                     "opcode": "getHit",
                     "blockType": "reporter",
                     "text": "sword hit vector position",
                     "arguments": {
                     }
-            },            */
+            },
             {
                     "opcode": "extractFromVector",
                     "blockType": "reporter",
@@ -762,36 +860,13 @@ class FruitJuice {
                         },
                     }
             },         
-/*            {
+            {
                     "opcode": "movePlayerTop",
                     "blockType": "command",
                     "text": "move player to top",
                     "arguments": {
                     }
-            },         */
-/*	    {
-		    "opcode": "spawnEntity",
-                    "blockType": "command",
-                    "text": "spawn [entity] at ([x],[y],[z])",
-                    "arguments": {
-                        "entity": {
-                            "type": "number",
-                            "defaultValue": "120"
-                        },
-                        "x": {
-                            "type": "number",
-                            "defaultValue": "0"
-                        },
-                        "y": {
-                            "type": "number",
-                            "defaultValue": "0"
-                        },
-                        "z": {
-                            "type": "number",
-                            "defaultValue": "0"
-                        },
-                    }
-            },*/
+            },         
             {
                     "opcode": "spawnEntity",
                     "blockType": "command",
@@ -958,7 +1033,111 @@ class FruitJuice {
                         },
                     }
             },            
-/*            {
+            {
+                    "opcode": "fill",
+                    "blockType": "command",
+                    "text": "fill from (x [x1] y [y1] z [z1]) to (x [x2] y [y2] z [z2]) with [b]",
+                    "arguments": {
+                        "x1": {"type": "string", "defaultValue": "~"},
+                        "y1": {"type": "string", "defaultValue": "~"},
+                        "z1": {"type": "string", "defaultValue": "~"},
+                        "x2": {"type": "string", "defaultValue": "~"},
+                        "y2": {"type": "string", "defaultValue": "~"},
+                        "z2": {"type": "string", "defaultValue": "~"},
+                        "b": {"type": "string", "menu": "blockMenu", "defaultValue": "Stone"},
+                    }
+            },
+            {
+                    "opcode": "sign",
+                    "blockType": "command",
+                    "text": "sign at (x [x] y [y] z [z]) facing [dir] saying [l1] [l2] [l3] [l4]",
+                    "arguments": {
+                        "x": {"type": "string", "defaultValue": "~"},
+                        "y": {"type": "string", "defaultValue": "~"},
+                        "z": {"type": "string", "defaultValue": "~"},
+                        "dir": {"type": "string", "menu": "signMenu", "defaultValue": "NORTH"},
+                        "l1": {"type": "string", "defaultValue": "made in"},
+                        "l2": {"type": "string", "defaultValue": "Scratch"},
+                        "l3": {"type": "string", "defaultValue": ""},
+                        "l4": {"type": "string", "defaultValue": ""},
+                    }
+            },
+            {
+                    "opcode": "explode",
+                    "blockType": "command",
+                    "text": "explosion at (x [x] y [y] z [z]) power [power]",
+                    "arguments": {
+                        "x": {"type": "string", "defaultValue": "~"},
+                        "y": {"type": "string", "defaultValue": "~"},
+                        "z": {"type": "string", "defaultValue": "~"},
+                        "power": {"type": "number", "defaultValue": 3},
+                    }
+            },
+            {
+                    "opcode": "removeEntity",
+                    "blockType": "command",
+                    "text": "remove entity [id]",
+                    "arguments": {
+                        "id": {"type": "string", "defaultValue": ""},
+                    }
+            },
+            {
+                    "opcode": "pointPlayer",
+                    "blockType": "command",
+                    "text": "point player towards (x [x] y [y] z [z])",
+                    "arguments": {
+                        "x": {"type": "string", "defaultValue": "~"},
+                        "y": {"type": "string", "defaultValue": "~"},
+                        "z": {"type": "string", "defaultValue": "~"},
+                    }
+            },
+            {
+                    "opcode": "worldList",
+                    "blockType": "reporter",
+                    "text": "list of worlds",
+                    "arguments": {}
+            },
+            {
+                    "opcode": "currentWorld",
+                    "blockType": "reporter",
+                    "text": "current world",
+                    "arguments": {}
+            },
+            {
+                    "opcode": "switchWorld",
+                    "blockType": "command",
+                    "text": "switch to world [name]",
+                    "arguments": {
+                        "name": {"type": "string", "defaultValue": "world"},
+                    }
+            },
+            {
+                    "opcode": "setHealth",
+                    "blockType": "command",
+                    "text": "set health to [v]",
+                    "arguments": {
+                        "v": {"type": "number", "defaultValue": 20},
+                    }
+            },
+            {
+                    "opcode": "setFood",
+                    "blockType": "command",
+                    "text": "set food to [v]",
+                    "arguments": {
+                        "v": {"type": "number", "defaultValue": 20},
+                    }
+            },
+            {
+                    "opcode": "showTitle",
+                    "blockType": "command",
+                    "text": "show title [title] subtitle [sub] for [stay] frames",
+                    "arguments": {
+                        "title": {"type": "string", "defaultValue": "Hello!"},
+                        "sub": {"type": "string", "defaultValue": ""},
+                        "stay": {"type": "number", "defaultValue": 60},
+                    }
+            },
+            {
                     "opcode": "saveTurtle",
                     "blockType": "command",
                     "text": "turtle save",
@@ -985,7 +1164,7 @@ class FruitJuice {
                     "text": "resume drawing",
                     "arguments": {
                     }
-            },          */  
+            },            
             ],
         "menus": {
             moveMenu: [{text:"forward",value:1}, {text:"back",value:-1}],
@@ -993,7 +1172,10 @@ class FruitJuice {
             coordinateMenu: [{text:"x",value:0}, {text:"y",value:1}, {text:"z",value:2}],
             turnMenu: [ "yaw", "pitch", "roll" ],
             modeMenu: [{text:"exact",value:1},{text:"block",value:0}],
-            entityMenu: 
+            // acceptReporters, so the entity can be picked from the list
+            // OR worked out -- which is what the second, numeric
+            // spawnEntity block used to be for.
+            entityMenu: { acceptReporters: true, items:
 	    [
 		{text:"Item",value:1},
 		{text:"XPOrb",value:2},
@@ -1078,7 +1260,7 @@ class FruitJuice {
                 {text:"Parrot",value:105},
                 {text:"Villager",value:120},
                 {text:"EnderCrystal",value:200},
-	    ],
+	    ] },
 	    circuitMenu: { acceptReporters: true,
 		items: [
 		    {text:"Stone",value:"STONE"},
@@ -1144,6 +1326,14 @@ class FruitJuice {
                         {text:"up",value:"UP"},
                         {text:"down",value:"DOWN"}]
             },
+            // A sign can only face sideways. dirMenu offers up and down
+            // as well, and BlockFace.UP throws when it reaches Bukkit's
+            // Rotatable.setRotation, so the sign block gets its own menu
+            // with the four compass points and nothing else on it.
+            signMenu: [{text:"north",value:"NORTH"},
+                       {text:"south",value:"SOUTH"},
+                       {text:"east",value:"EAST"},
+                       {text:"west",value:"WEST"}],
             blockMenu: { acceptReporters: true, items: "getBlockMenuItems" }
             }
         };
@@ -1304,22 +1494,61 @@ class FruitJuice {
     attachSocketHandlers(socket) {
         var rjm = this;
         this.pending = [];
+        // What has arrived but is not yet a whole line.
+        this.rxBuffer = "";
+        // Frames are read in the order they arrived; see below.
+        this.rxTail = Promise.resolve();
+        // Which socket the buffer belongs to. Reading a frame is asynchronous,
+        // so a frame handed over just before a disconnect can finish being read
+        // just after it -- and appending that to a buffer the disconnect had
+        // emptied puts half a dead reply in front of the next live one.
+        this.rxEpoch = (this.rxEpoch || 0) + 1;
+        var epoch = this.rxEpoch;
 
-        socket.onmessage = function(event) {
-            var deliver = function(text) {
+        // A REPLY IS A LINE, NOT A FRAME.
+        //
+        // The server writes every answer followed by '\n'. What arrives here
+        // is not those answers: websockify relays a TCP stream, and a websocket
+        // frame carries whatever happened to land in one segment. So one reply
+        // can arrive in eight frames, and two short replies can share one.
+        //
+        // Treating a frame as a reply truncates long ones silently, which is
+        // the worst way to be wrong. world.getBlockTypes() is 20KB of material
+        // names; the first frame held 95 of 1196, ending mid-list at
+        // BLACK_STAINED_GLASS_PANE. That still looked like a plausible block
+        // list -- uppercase, no spaces, well over the length check -- so it was
+        // accepted whole, and every material after B was then reported as one
+        // this server does not have.
+        var deliver = function(text) {
+            if (rjm.rxEpoch !== epoch) return;    // arrived on a socket since dropped
+            rjm.rxBuffer += text;
+            var nl;
+            while ((nl = rjm.rxBuffer.indexOf("\n")) >= 0) {
+                var line = rjm.rxBuffer.slice(0, nl);
+                rjm.rxBuffer = rjm.rxBuffer.slice(nl + 1);
                 var waiter = rjm.pending.shift();
-                if (waiter === undefined) return;   // nothing asked for this
+                if (waiter === undefined) continue;  // nothing asked for this
                 clearTimeout(waiter.timer);
                 // A waiter that already timed out still owns this reply, so it
                 // is consumed and dropped rather than handed to the next one
                 // in the queue -- otherwise one slow answer shifts every later
                 // reply onto the wrong request.
-                if (!waiter.timedOut) waiter.resolve(text);
-            };
+                if (!waiter.timedOut) waiter.resolve(line);
+            }
+        };
+
+        socket.onmessage = function(event) {
+            // Blob.text() is async, and two frames read concurrently may
+            // resolve out of order. That used to misdeliver a single reply;
+            // now that frames are appended to a shared buffer it would corrupt
+            // every reply after it, so the reads are chained, not raced.
             if (event.data && typeof event.data.text === "function") {
-                event.data.text().then(deliver);     // a Blob, as browsers send
+                rjm.rxTail = rjm.rxTail
+                    .then(function() { return event.data.text(); })
+                    .then(deliver);                  // a Blob, as browsers send
             } else {
-                deliver(String(event.data));         // already a string
+                var text = String(event.data);       // already a string
+                rjm.rxTail = rjm.rxTail.then(function() { deliver(text); });
             }
         };
 
@@ -1334,6 +1563,10 @@ class FruitJuice {
     failPending(err) {
         var waiting = this.pending || [];
         this.pending = [];
+        // Half a line from a dead socket must not prefix the next reply, and
+        // nor must a frame still being read when the socket went away.
+        this.rxBuffer = "";
+        this.rxEpoch = (this.rxEpoch || 0) + 1;
         for (var i = 0; i < waiting.length; i++) {
             clearTimeout(waiting[i].timer);
             if (!waiting[i].timedOut) waiting[i].reject(err);
@@ -1544,7 +1777,12 @@ class FruitJuice {
     movePlayerTop() {
         return this.getPosition().then(pos => 
             this.sendAndReceive("world.getHeight("+Math.floor(pos[0])+","+Math.floor(pos[2])+")").then(
-                height => this.setPlayerPos({x:pos[0],y:height,z:pos[2]})));
+                // +1: getHeight is getHighestBlockYAt, the y of the highest
+                // block that is not air. Standing at that y is standing IN
+                // it. On top of it is one higher.
+                height => this.setPlayerPos({x:pos[0],
+                                             y:Number(height)+1,
+                                             z:pos[2]})));
     };
 
     getRotation() {
@@ -1614,7 +1852,16 @@ class FruitJuice {
                     for(var i=0;i<hits.length;i++)
                         rjm.hits.push(hits[i].split(",").map(parseFloat));
                 }
-                return ""+this.shift.pop().slice(0,3);
+                // `this.shift` was never a thing -- the array is `hits`,
+                // and reading a property off a function then calling .pop()
+                // on undefined threw every time a hit arrived. Which is,
+                // almost certainly, why the block above spent years commented
+                // out: it did not work, so it was hidden rather than fixed.
+                //
+                // shift() and not pop(), to match the branch at the top: hits
+                // come back oldest first and should be handed out in that
+                // order, or a flurry of them plays backwards.
+                return rjm.hits.length > 0 ? ""+rjm.hits.shift().slice(0,3) : "";
             });
     };
 
@@ -1832,6 +2079,12 @@ class FruitJuice {
         this.port = port;
 
         var rjm = this;
+        // Remembered only once it has actually worked, so a typo is not saved
+        // and handed back tomorrow.
+        var remember = function (result) {
+            rememberServer(ip, port);
+            return result;
+        };
         // Secure first, then insecure. This replaces having two builds of the
         // extension and two URLs in the setup guide.
         return this.openSocket_p(["wss://"+ip+":"+port, "ws://"+ip+":"+port])
@@ -1840,7 +2093,25 @@ class FruitJuice {
             })).then (result => rjm.getRotation().then( result => {
                 rjm.playerRot = result;
                 rjm.turtle.matrix = rjm.turtle.yawMatrix(Math.floor(0.5+result/90)*90);
-            })).then(result => rjm.refreshBlockTypes());
+            })).then(result => rjm.refreshBlockTypes()).then(remember);
+    };
+    
+    // Connect to whatever was remembered, or to localhost if nothing has
+    // been. This is what the example projects use, so that an example
+    // works without anybody editing somebody else's address out of it.
+    connectSaved() {
+        var server = savedServer() || {ip: DEFAULT_IP, port: DEFAULT_PORT};
+        return this.connect_p({ip: server.ip, port: server.port});
+    };
+    
+    rememberServer({ip,port}) {
+        rememberServer(ip, port);
+    };
+    
+    myServer() {
+        var server = savedServer();
+        return server ? server.ip + ":" + server.port
+                      : DEFAULT_IP + ":" + DEFAULT_PORT + " (nothing saved yet)";
     };
     
     chat({msg}){
@@ -1956,6 +2227,94 @@ class FruitJuice {
     setPlayerPos({x,y,z}) {
       var [x,y,z] = this.parseXYZ(x,y,z);
       this.send("player.setPos("+x+","+y+","+z+")");
+    };
+
+    // ---- things the server has always understood and the extension did not --
+
+    // A cuboid in one command instead of one command per block.
+    //
+    // Every block placed from Scratch used to be its own round trip, including
+    // the deferred path: `suspend` collects them in a Map and `resume` sends
+    // the lot, but still as one world.setBlock each. A wall 20 by 10 is 200
+    // messages and, on a school connection, a visible wait. world.setBlocks
+    // fills the whole box server-side, and the server has done so since long
+    // before this extension existed.
+    fill({x1,y1,z1,x2,y2,z2,b}) {
+        var [ax,ay,az] = this.parseXYZ(x1,y1,z1).map(Math.floor);
+        var [bx,by,bz] = this.parseXYZ(x2,y2,z2).map(Math.floor);
+        var block = this.resolveBlock(b);
+
+        // Anything deferred inside the box would be written afterwards and
+        // would punch holes in the fill, so those are dropped: the fill is
+        // what the user asked for last.
+        if (this.savedBlocks != null) {
+            var lox = Math.min(ax,bx), hix = Math.max(ax,bx);
+            var loy = Math.min(ay,by), hiy = Math.max(ay,by);
+            var loz = Math.min(az,bz), hiz = Math.max(az,bz);
+            for (var key of Array.from(this.savedBlocks.keys())) {
+                var p = key.split(",").map(Number);
+                if (p[0] >= lox && p[0] <= hix && p[1] >= loy && p[1] <= hiy &&
+                    p[2] >= loz && p[2] <= hiz) {
+                    this.savedBlocks.delete(key);
+                }
+            }
+        }
+        this.send("world.setBlocks("+ax+","+ay+","+az+","+bx+","+by+","+bz+","+block+")");
+    };
+
+    sign({x,y,z,dir,l1,l2,l3,l4}) {
+        var [sx,sy,sz] = this.parseXYZ(x,y,z).map(Math.floor);
+        // A standing sign needs a solid block under it or it drops off, which
+        // is a confusing thing to debug from Scratch, so say so rather than
+        // fixing it silently -- putting a post there would be building
+        // something the user did not ask for.
+        this.send("world.setSign("+sx+","+sy+","+sz+",OAK_SIGN,"+dir+","+
+                  l1+","+l2+","+l3+","+l4+")");
+    };
+
+    explode({x,y,z,power}) {
+        var [ex,ey,ez] = this.parseXYZ(x,y,z).map(Math.floor);
+        this.send("world.createExplosion("+ex+","+ey+","+ez+","+power+")");
+    };
+
+    removeEntity({id}) {
+        // Answers, unlike most setters, so it is sent as a request: without
+        // reading the reply the connection ends up one message out of step.
+        return this.sendAndReceive("entity.remove("+id+")");
+    };
+
+    pointPlayer({x,y,z}) {
+        // A direction, not a place: the server wants the vector to look along,
+        // so this is the difference from where the player is standing.
+        var [tx,ty,tz] = this.parseXYZ(x,y,z);
+        return this.getPosition().then(pos =>
+            this.send("player.setDirection("+(tx-pos[0])+","+(ty-pos[1])+","+
+                      (tz-pos[2])+")"));
+    };
+
+    worldList() {
+        return this.sendAndReceive("world.getWorlds()")
+            .then(names => names.split("|").join(", "));
+    };
+
+    currentWorld() {
+        return this.sendAndReceive("world.getCurrentWorld()");
+    };
+
+    switchWorld({name}) {
+        return this.sendAndReceive("world.setWorld("+name+")");
+    };
+
+    setHealth({v}) {
+        this.send("player.setHealth("+v+")");
+    };
+
+    setFood({v}) {
+        this.send("player.setFoodLevel("+v+")");
+    };
+
+    showTitle({title,sub,stay}) {
+        this.send("player.sendTitle("+title+","+sub+",10,"+stay+",10)");
     };
 
     setPlayer({playerName}) {

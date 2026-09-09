@@ -20,13 +20,23 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FruitJuicePlugin extends JavaPlugin implements Listener {
 
-	public static final Set<Material> blockBreakDetectionTools = EnumSet.of(
-			Material.DIAMOND_SWORD,
-			Material.GOLDEN_SWORD,
-			Material.IRON_SWORD,
-			Material.STONE_SWORD,
-			Material.WOODEN_SWORD
-	);
+	/**
+	 * Whether an item counts as a sword, and so triggers a hit event.
+	 *
+	 * This used to be a hardcoded list of five swords, written in the initial
+	 * commit in December 2012 and never touched since. Minecraft added
+	 * netherite in 1.16, six years ago, so a netherite sword -- the best one in
+	 * the game, and therefore the one anybody who has played for a while is
+	 * holding -- silently did nothing. No error, no log line: hits simply never
+	 * arrived, which is a hard thing to debug from inside Scratch.
+	 *
+	 * Matching on the name cannot go stale the same way, and needs no constant
+	 * that a given API version might not have: compiled against 1.13 or 1.21,
+	 * NETHERITE_SWORD is caught either way without ever being named.
+	 */
+	public static boolean isHitTool(Material material) {
+		return material != null && material.name().endsWith("_SWORD");
+	}
 
 	public ServerListenerThread serverThread;
 
@@ -127,7 +137,7 @@ public class FruitJuicePlugin extends JavaPlugin implements Listener {
 				break;
 		}
 		ItemStack currentTool = event.getItem();
-		if (currentTool == null || !blockBreakDetectionTools.contains(currentTool.getType())) {
+		if (currentTool == null || !isHitTool(currentTool.getType())) {
 			return;
 		}
 		for (RemoteSession session : sessions) {
