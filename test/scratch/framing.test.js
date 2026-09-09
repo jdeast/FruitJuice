@@ -177,6 +177,39 @@ async function main() {
     check("a frame still being read when the socket dies is discarded",
           (await live) === "9,9,9");
 
+    // ── an error is not a death ─────────────────────────────────────────────
+    // onerror can be reported on a socket that stays open and keeps working.
+    // Retiring the buffer there made deliver() return early for the rest of the
+    // socket's life: the connection opened, said it had succeeded, and then
+    // answered nothing at all, which reads exactly like "it will not connect".
+    f = session();
+    const doomed = f.sendAndReceive("player.getPos()");
+    doomed.catch(function () {});
+    f.socket.onerror(new Error("transient"));
+    const after = f.sendAndReceive("player.getPos()");
+    frame(f, "7,7,7\n");
+    check("a socket still answers after a non-fatal onerror",
+          (await after) === "7,7,7");
+
+    // A frame that cannot be read must not silence the ones behind it. The
+    // frames are chained through one promise, and a rejected promise is
+    // permanent -- every later .then() on it is skipped -- so without a catch
+    // a single unreadable frame would deafen the socket for good.
+    //
+    // Nothing is waiting when it arrives, on purpose. A dropped frame with a
+    // request outstanding legitimately shifts that request onto the next
+    // reply, which is a different property; this is only about the chain
+    // surviving.
+    f = session();
+    f.socket.onmessage({ data: { text: function () {
+        return Promise.reject(new Error("unreadable frame"));
+    } } });
+    await settle(20);
+    const later = f.sendAndReceive("player.getPos()");
+    frame(f, "5,5,5\n");
+    check("one unreadable frame does not silence the socket",
+          (await later) === "5,5,5");
+
     console.log("");
     if (failures) {
         console.log(failures + " failed");

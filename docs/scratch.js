@@ -1542,18 +1542,35 @@ class FruitJuice {
             // resolve out of order. That used to misdeliver a single reply;
             // now that frames are appended to a shared buffer it would corrupt
             // every reply after it, so the reads are chained, not raced.
+            // Whatever happens, the tail must settle FULFILLED. A rejected
+            // promise here is permanent: every later .then() on it is skipped,
+            // so one bad frame would silence the socket for good.
+            var dropped = function(e) {
+                console.error("FruitJuice: dropped a frame -- " + e);
+            };
             if (event.data && typeof event.data.text === "function") {
                 rjm.rxTail = rjm.rxTail
                     .then(function() { return event.data.text(); })
-                    .then(deliver);                  // a Blob, as browsers send
+                    .then(deliver)                   // a Blob, as browsers send
+                    .catch(dropped);
             } else {
                 var text = String(event.data);       // already a string
-                rjm.rxTail = rjm.rxTail.then(function() { deliver(text); });
+                rjm.rxTail = rjm.rxTail
+                    .then(function() { deliver(text); })
+                    .catch(dropped);
             }
         };
 
         socket.onerror = function(err) { rjm.failPending(err); };
         socket.onclose = function() {
+            // The buffer and the epoch are retired HERE and not in
+            // failPending, which onerror also calls. An error can be reported
+            // on a socket that stays open and keeps working; retiring the
+            // epoch then would make deliver() return early for the rest of its
+            // life, so the connection would open, report success, and answer
+            // nothing ever again. Only a close means the socket is really gone.
+            rjm.rxBuffer = "";
+            rjm.rxEpoch = (rjm.rxEpoch || 0) + 1;
             rjm.failPending(new Error("the connection to minecraft closed"));
         };
     };
@@ -1563,10 +1580,6 @@ class FruitJuice {
     failPending(err) {
         var waiting = this.pending || [];
         this.pending = [];
-        // Half a line from a dead socket must not prefix the next reply, and
-        // nor must a frame still being read when the socket went away.
-        this.rxBuffer = "";
-        this.rxEpoch = (this.rxEpoch || 0) + 1;
         for (var i = 0; i < waiting.length; i++) {
             clearTimeout(waiting[i].timer);
             if (!waiting[i].timedOut) waiting[i].reject(err);
