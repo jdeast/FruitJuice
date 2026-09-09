@@ -214,6 +214,16 @@ start_backup_watch() {
     fi
     [ -x "$HERE/backup-watch.sh" ] || { say "no backup-watch.sh; skipping"; return 0; }
     say "starting backup watcher"
+    # The watcher re-reads config.sh, which names PRODUCTION on purpose --
+    # backups must follow the world people play on, not whichever instance
+    # happens to be up. So the instance has to be handed down explicitly, or a
+    # watcher started for the testbed (SERVER_NAME=... start-server.sh) would
+    # take snapshots of the production world every time a testbed player left.
+    export SERVER_NAME
+    # Note pgrep matches backup-watch.sh machine-wide, so there is one watcher
+    # for the box rather than one per instance. That is fine here only because
+    # every instance uses the same python port and so only one can run at a
+    # time; it would need a per-instance marker if that ever stopped being true.
     # stdbuf -oL: without it the watcher's output is block-buffered into the
     # log file and nothing appears for a long time, which reads exactly like a
     # watcher that is not working.
