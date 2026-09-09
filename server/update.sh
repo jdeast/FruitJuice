@@ -142,4 +142,67 @@ geysermc() {
 geysermc geyser    "Geyser-Spigot"    "geyser.jar"
 geysermc floodgate "floodgate-spigot" "floodgate.jar"
 
+# ------------------------------------------------------------- fruitjuice ----
+# From the GitHub release, not Hangar. release.yml builds the jar, runs the
+# full suite, attaches it to the release, and only then hands that same asset
+# to Hangar -- so the release is upstream of Hangar and cannot be behind it,
+# and reading it needs no API token. Building from a checkout here would want a
+# JDK and maven on a Pi and would produce an artifact nothing had tested.
+say "checking FruitJuice"
+FRUITJUICE_REPO="${FRUITJUICE_REPO:-jdeast/FruitJuice}"
+
+FJ_JSON=$(curl -fsSL -H "User-Agent: $UA" \
+    "https://api.github.com/repos/$FRUITJUICE_REPO/releases/latest") \
+    || die "could not reach the GitHub release API for $FRUITJUICE_REPO"
+
+FJ_TAG=$(printf %s "$FJ_JSON" | jq -r '.tag_name // empty')
+# The asset carries its version in its name (FruitJuice-0.5.1.jar), so the tidy
+# /releases/latest/download/NAME shortcut does not work -- the name moves with
+# every release -- and the API has to be asked which asset it actually is.
+FJ_ASSET='[.assets[] | select(.name | endswith(".jar"))]'
+FJ_JAR=$(printf %s "$FJ_JSON" | jq -r "$FJ_ASSET | first | .name // empty")
+FJ_URL=$(printf %s "$FJ_JSON" | jq -r "$FJ_ASSET | first | .browser_download_url // empty")
+
+[ -n "$FJ_TAG" ] || die "the latest FruitJuice release has no tag"
+[ -n "$FJ_JAR" ] || die "FruitJuice release $FJ_TAG has no jar attached"
+
+FJ_WANT="${FJ_TAG#v}"
+FJ_HAVE=$(ls "$LIB"/FruitJuice-*.jar 2>/dev/null \
+          | sed "s|.*/FruitJuice-||; s|\.jar$||" | sort -V | tail -1 || true)
+FJ_NEWEST=$(printf "%s\n%s\n" "$FJ_HAVE" "$FJ_WANT" | sort -V | tail -1)
+
+# Never roll back over a hand-built jar. One built from master and put here by
+# deploy-plugin.sh is newer than any release, and quietly replacing it would
+# undo work that simply has not been tagged yet -- and the server would go on
+# reporting a version that no longer matches what it is running.
+if [ -n "$FJ_HAVE" ] && [ "$FJ_HAVE" != "$FJ_WANT" ] && [ "$FJ_NEWEST" = "$FJ_HAVE" ]; then
+    say "  $FJ_HAVE is here and NEWER than release $FJ_WANT -- leaving it alone"
+    say "  (a hand-built jar: tag and push it rather than rolling back)"
+else
+    if [ -f "$LIB/$FJ_JAR" ]; then
+        say "  $FJ_JAR already present"
+    else
+        say "  downloading $FJ_JAR"
+        fetch "$FJ_URL" "$LIB/$FJ_JAR"
+
+        # plugin.yml is the number the server prints when it enables the
+        # plugin, so a release whose jar disagrees with its own tag is worth
+        # catching now rather than weeks later when somebody asks which
+        # version is actually running. unzip is optional: everything else here
+        # works without it, so a missing unzip loses the check, not the update.
+        if command -v unzip >/dev/null; then
+            FJ_BUILT=$(unzip -p "$LIB/$FJ_JAR" plugin.yml 2>/dev/null \
+                       | sed -n "s/^version: *'\?\([^']*\)'\?/\1/p" | head -1)
+            if [ "$FJ_BUILT" != "$FJ_WANT" ]; then
+                rm -f "$LIB/$FJ_JAR"
+                die "release $FJ_TAG holds a jar reporting ${FJ_BUILT:-no version}"
+            fi
+            say "  verified: plugin.yml says $FJ_BUILT"
+        else
+            say "  unzip not installed; skipping the version check inside the jar"
+        fi
+    fi
+    link_all "$FJ_JAR" "fruitjuice.jar"
+fi
+
 say "done. Nothing was restarted -- run start-server.sh restart when ready."

@@ -29,7 +29,7 @@ MIN_BACKUP_INTERVAL=0 ./backup.sh   # take one now regardless
 | `start-server.sh [restart\|start\|stop\|status]` | Runs the server, the WebSocket relay Scratch connects to, and the backup watcher. |
 | `backup.sh [--force]` | One world snapshot, then prune to `KEEP_BACKUPS`. |
 | `backup-watch.sh` | Follows the log and calls `backup.sh` when a player logs off. Started by `start-server.sh`. |
-| `update.sh` | Fetches the latest Paper, Geyser and Floodgate and repoints each instance. Restarts nothing. |
+| `update.sh` | Fetches the latest Paper, Geyser, Floodgate and FruitJuice and repoints each instance. FruitJuice comes from the GitHub release, and it refuses to roll back over a newer hand-built jar. Restarts nothing. |
 | `deploy-plugin.sh <jar>` | Copies a built jar to the server, verifies the checksum, repoints the symlink, restarts, and reports the version the server actually enabled. |
 
 ## How backups work
