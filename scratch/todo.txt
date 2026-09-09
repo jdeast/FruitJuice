@@ -151,8 +151,8 @@ Payoff: high, and unlike anything else here.
 Arrow keys move the turtle in real time, with the pen down. An Etch A Sketch
 the size of a football pitch.
 
-Add `save turtle` / `restore turtle` and you have undo -- though see (9):
-they are written but commented out, so they are not in the palette today.
+Add `save turtle` / `restore turtle` and you have undo.
+
 Add a costume-per-block palette and you have a paint program whose canvas you
 can stand on.
 
@@ -187,24 +187,38 @@ is probably worth more classroom time than any single new example.
 Effort: low. Payoff: high, and unglamorous.
 
 
-9. THE BLOCKS THAT ARE ALREADY WRITTEN AND SWITCHED OFF
--------------------------------------------------------
-Six /* */ comments in scratch.js hide eighteen block definitions. The methods
-behind them are still there, so these are decisions somebody made and did not
-write down, and at least one of them was made because the code was broken:
-getHit called `this.shift.pop()`, where the array is named `hits` and `shift`
-is a function, so it threw every time a hit arrived.
+9. DONE: THE BLOCKS THAT WERE SWITCHED OFF
+------------------------------------------
+Six /* */ comments in scratch.js hid eighteen block definitions. All of them
+are now either in the palette or deleted, and the test asserts that no block
+definition is commented out, so this cannot quietly happen again.
 
-Switched off today: saveTurtle, restoreTurtle, suspend, resume, haveBlock,
-onBlock, movePlayerTop, and one of the two spawnEntity variants.
+Brought back, all seven working as written:
 
-Each wants five minutes: try it, and either fix it and uncomment it or delete
-it and say why. A commented out block is worse than a missing one, because the
-next person to read the file believes it exists. (The eleven blocks added in
-this round were themselves first anchored on `suspend` and vanished into its
-comment, which is how the whole thing came to light.)
+    have [block] at (x y z)     ask what is at a place
+    player on [block]           ask what you are standing on
+    move player to top          jump to the surface
+    turtle save / turtle restore   undo for the turtle
+    suspend / resume drawing    collect placements, then send them
 
-Effort: low. Payoff: medium, and it stops the file lying about itself.
+One was actually broken and that is why it was hidden: `move player to top`
+set the player's y to whatever world.getHeight returned, and getHeight is
+Bukkit's getHighestBlockYAt -- the y of the highest block that is NOT air. It
+put the player inside the ground rather than on it. Checked against five
+places on the live server: y=height is solid every time, y=height+1 is air.
+
+getHit was the same story, fixed a commit earlier: it called this.shift.pop()
+where the array is `hits`, so it threw every time a hit arrived.
+
+Deleted rather than revived: a second `spawn entity` block whose entity was a
+bare number, duplicating the one with the dropdown. entityMenu now accepts a
+reporter instead, so one block does both -- pick from the list, or work the
+number out.
+
+Which leaves the lesson rather than the task: a commented out block is worse
+than a missing one, because the next person to read the file believes it is
+there. Two of these were hidden because they did not work, and hiding them
+meant nobody fixed them for years.
 
 
 NOTES

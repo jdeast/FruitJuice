@@ -150,6 +150,42 @@ Object.keys(wanted).forEach(function (c) {
     ok("sends " + c + " (" + wanted[c] + ")", sent.has(c));
 });
 
+// No block definition may be commented out.
+//
+// Eighteen of them were, across six /* */ regions, and every one was a
+// decision nobody wrote down. At least one -- getHit -- was hidden because it
+// threw rather than because it was unwanted, and stayed hidden for years. A
+// commented out block is worse than a missing one: the next person to read
+// the file believes it exists, and eleven new blocks were once anchored on
+// one of them and vanished into the same comment.
+//
+// If a block should not be in the palette, delete it and say why in the commit.
+const commentedBlocks = [];
+(src.match(/\/\*[\s\S]*?\*\//g) || []).forEach(function (c) {
+    all(/"opcode":\s*"(\w+)"/, c).forEach(function (o) { commentedBlocks.push(o); });
+});
+ok("no block definition is commented out", commentedBlocks.length === 0,
+   commentedBlocks.join(" "));
+
+// The seven brought back, and the reason each was worth it.
+const revived = {
+    haveBlock: "ask what block is at a place",
+    onBlock: "ask what you are standing on",
+    movePlayerTop: "jump to the surface",
+    saveTurtle: "remember where the turtle was",
+    restoreTurtle: "put it back -- undo",
+    suspend: "hold the drawing",
+    resume: "and send it",
+};
+Object.keys(revived).forEach(function (o) {
+    ok("the " + o + " block is live (" + revived[o] + ")", opcodes.indexOf(o) >= 0);
+});
+
+// getHeight is getHighestBlockYAt: the y of the highest block that is NOT air.
+// Standing the player at that y is standing inside it.
+ok("movePlayerTop stands on the ground, not in it",
+   /movePlayerTop[\s\S]*?Number\(height\)\s*\+\s*1/.test(code));
+
 // setBlocks is the one that changes what is possible rather than what is
 // available: 500 blocks in one message rather than 500 messages.
 ok("the fill block exists and uses setBlocks",

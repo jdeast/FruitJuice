@@ -426,7 +426,7 @@ class FruitJuice {
                         },
                     }
             },
-/*            {
+            {
                     "opcode": "haveBlock",
                     "blockType": "Boolean",
                     "text": "have [b] at ([x],[y],[z])",
@@ -449,8 +449,8 @@ class FruitJuice {
                             "defaultValue": "0"
                         },
                     }
-            },             */
-/*            {
+            },             
+            {
                     "opcode": "onBlock",
                     "blockType": "Boolean",
                     "text": "player on [b]",
@@ -461,7 +461,7 @@ class FruitJuice {
                             "menu": "blockMenu"
                         },
                     }
-            }, */
+            }, 
             {
                     "opcode": "getPlayerX",
                     "blockType": "reporter",
@@ -762,36 +762,13 @@ class FruitJuice {
                         },
                     }
             },         
-/*            {
+            {
                     "opcode": "movePlayerTop",
                     "blockType": "command",
                     "text": "move player to top",
                     "arguments": {
                     }
-            },         */
-/*	    {
-		    "opcode": "spawnEntity",
-                    "blockType": "command",
-                    "text": "spawn [entity] at ([x],[y],[z])",
-                    "arguments": {
-                        "entity": {
-                            "type": "number",
-                            "defaultValue": "120"
-                        },
-                        "x": {
-                            "type": "number",
-                            "defaultValue": "0"
-                        },
-                        "y": {
-                            "type": "number",
-                            "defaultValue": "0"
-                        },
-                        "z": {
-                            "type": "number",
-                            "defaultValue": "0"
-                        },
-                    }
-            },*/
+            },         
             {
                     "opcode": "spawnEntity",
                     "blockType": "command",
@@ -1062,7 +1039,7 @@ class FruitJuice {
                         "stay": {"type": "number", "defaultValue": 60},
                     }
             },
-/*            {
+            {
                     "opcode": "saveTurtle",
                     "blockType": "command",
                     "text": "turtle save",
@@ -1089,7 +1066,7 @@ class FruitJuice {
                     "text": "resume drawing",
                     "arguments": {
                     }
-            },          */  
+            },            
             ],
         "menus": {
             moveMenu: [{text:"forward",value:1}, {text:"back",value:-1}],
@@ -1097,7 +1074,10 @@ class FruitJuice {
             coordinateMenu: [{text:"x",value:0}, {text:"y",value:1}, {text:"z",value:2}],
             turnMenu: [ "yaw", "pitch", "roll" ],
             modeMenu: [{text:"exact",value:1},{text:"block",value:0}],
-            entityMenu: 
+            // acceptReporters, so the entity can be picked from the list
+            // OR worked out -- which is what the second, numeric
+            // spawnEntity block used to be for.
+            entityMenu: { acceptReporters: true, items:
 	    [
 		{text:"Item",value:1},
 		{text:"XPOrb",value:2},
@@ -1182,7 +1162,7 @@ class FruitJuice {
                 {text:"Parrot",value:105},
                 {text:"Villager",value:120},
                 {text:"EnderCrystal",value:200},
-	    ],
+	    ] },
 	    circuitMenu: { acceptReporters: true,
 		items: [
 		    {text:"Stone",value:"STONE"},
@@ -1656,7 +1636,12 @@ class FruitJuice {
     movePlayerTop() {
         return this.getPosition().then(pos => 
             this.sendAndReceive("world.getHeight("+Math.floor(pos[0])+","+Math.floor(pos[2])+")").then(
-                height => this.setPlayerPos({x:pos[0],y:height,z:pos[2]})));
+                // +1: getHeight is getHighestBlockYAt, the y of the highest
+                // block that is not air. Standing at that y is standing IN
+                // it. On top of it is one higher.
+                height => this.setPlayerPos({x:pos[0],
+                                             y:Number(height)+1,
+                                             z:pos[2]})));
     };
 
     getRotation() {
