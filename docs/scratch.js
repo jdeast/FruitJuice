@@ -1494,22 +1494,61 @@ class FruitJuice {
     attachSocketHandlers(socket) {
         var rjm = this;
         this.pending = [];
+        // What has arrived but is not yet a whole line.
+        this.rxBuffer = "";
+        // Frames are read in the order they arrived; see below.
+        this.rxTail = Promise.resolve();
+        // Which socket the buffer belongs to. Reading a frame is asynchronous,
+        // so a frame handed over just before a disconnect can finish being read
+        // just after it -- and appending that to a buffer the disconnect had
+        // emptied puts half a dead reply in front of the next live one.
+        this.rxEpoch = (this.rxEpoch || 0) + 1;
+        var epoch = this.rxEpoch;
 
-        socket.onmessage = function(event) {
-            var deliver = function(text) {
+        // A REPLY IS A LINE, NOT A FRAME.
+        //
+        // The server writes every answer followed by '\n'. What arrives here
+        // is not those answers: websockify relays a TCP stream, and a websocket
+        // frame carries whatever happened to land in one segment. So one reply
+        // can arrive in eight frames, and two short replies can share one.
+        //
+        // Treating a frame as a reply truncates long ones silently, which is
+        // the worst way to be wrong. world.getBlockTypes() is 20KB of material
+        // names; the first frame held 95 of 1196, ending mid-list at
+        // BLACK_STAINED_GLASS_PANE. That still looked like a plausible block
+        // list -- uppercase, no spaces, well over the length check -- so it was
+        // accepted whole, and every material after B was then reported as one
+        // this server does not have.
+        var deliver = function(text) {
+            if (rjm.rxEpoch !== epoch) return;    // arrived on a socket since dropped
+            rjm.rxBuffer += text;
+            var nl;
+            while ((nl = rjm.rxBuffer.indexOf("\n")) >= 0) {
+                var line = rjm.rxBuffer.slice(0, nl);
+                rjm.rxBuffer = rjm.rxBuffer.slice(nl + 1);
                 var waiter = rjm.pending.shift();
-                if (waiter === undefined) return;   // nothing asked for this
+                if (waiter === undefined) continue;  // nothing asked for this
                 clearTimeout(waiter.timer);
                 // A waiter that already timed out still owns this reply, so it
                 // is consumed and dropped rather than handed to the next one
                 // in the queue -- otherwise one slow answer shifts every later
                 // reply onto the wrong request.
-                if (!waiter.timedOut) waiter.resolve(text);
-            };
+                if (!waiter.timedOut) waiter.resolve(line);
+            }
+        };
+
+        socket.onmessage = function(event) {
+            // Blob.text() is async, and two frames read concurrently may
+            // resolve out of order. That used to misdeliver a single reply;
+            // now that frames are appended to a shared buffer it would corrupt
+            // every reply after it, so the reads are chained, not raced.
             if (event.data && typeof event.data.text === "function") {
-                event.data.text().then(deliver);     // a Blob, as browsers send
+                rjm.rxTail = rjm.rxTail
+                    .then(function() { return event.data.text(); })
+                    .then(deliver);                  // a Blob, as browsers send
             } else {
-                deliver(String(event.data));         // already a string
+                var text = String(event.data);       // already a string
+                rjm.rxTail = rjm.rxTail.then(function() { deliver(text); });
             }
         };
 
@@ -1524,6 +1563,10 @@ class FruitJuice {
     failPending(err) {
         var waiting = this.pending || [];
         this.pending = [];
+        // Half a line from a dead socket must not prefix the next reply, and
+        // nor must a frame still being read when the socket went away.
+        this.rxBuffer = "";
+        this.rxEpoch = (this.rxEpoch || 0) + 1;
         for (var i = 0; i < waiting.length; i++) {
             clearTimeout(waiting[i].timer);
             if (!waiting[i].timedOut) waiting[i].reject(err);

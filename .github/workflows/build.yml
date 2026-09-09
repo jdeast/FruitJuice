@@ -106,6 +106,14 @@ jobs:
       - name: Connection and fallback tests
         run: node test/scratch/connect.test.js
 
+      # A reply is a line; a websocket frame is not a reply. websockify relays
+      # a TCP stream, so a 20KB answer arrives in eight frames and two short
+      # answers can share one. Reading a frame as a reply truncated the block
+      # list to its first 95 names and told children their server had no
+      # WHITE_CONCRETE, while placing it correctly.
+      - name: Reply framing
+        run: node test/scratch/framing.test.js
+
       # Every failure this catches is silent in the Scratch editor: a block
       # naming a menu that does not exist renders as an empty dropdown, an
       # opcode with no method does nothing when clicked, and a command the
