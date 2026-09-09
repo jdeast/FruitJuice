@@ -1,0 +1,201 @@
+scratch example ideas
+=====================
+
+There is a companion list at pyncraft/examples/todo.txt for the Python side,
+and it is deliberately not this list. Its organising idea is "take a real
+professional library, get coordinates out of it, turn those into blocks" --
+astronomy, terrain, proteins. Scratch cannot win that game and should not try:
+anything that is really a data pipeline is better written in Python.
+
+What Scratch has that Python does not is SENSES AND A STAGE. A microphone. A
+camera. Sprites you can drag. Cloud variables shared between two children in
+two different houses. A keyboard being pressed right now. And, through
+`getHit`, a Minecraft world that can press keys back.
+
+So the shape of a good Scratch example is:
+
+    something happening in the room  ->  something happening in the world
+
+and the best ones run both ways. That is a thing this project can do which
+essentially nothing else can, and almost none of the fourteen examples in
+scratch/examples currently do it -- they are turtle geometry, which is lovely,
+and which Python could do just as well.
+
+Rough effort/payoff is one person's guess.
+
+
+0. THE SHARED PIECE, worth building first
+-----------------------------------------
+The extension sends twelve distinct commands out of the fifty the server
+understands, and `world.setBlocks` is not one of them. Every block placed from
+Scratch is its own round trip.
+
+This is the same finding the Python list opened with, and the fix there was
+worth more than every example after it: pyncraft grew `buildVoxels`, and a
+274,000 block landscape went from impossible to thirty-three seconds. Scratch
+never got the equivalent, so a Scratch project that wants a wall builds it one
+block at a time over the network, and everybody learns that Minecraft-from-
+Scratch is slow.
+
+Wanted, roughly in order of how much they unlock:
+
+    fill from (x y z) to (x y z) with [block]   world.setBlocks
+    set sign at (x y z) [line 1..4]             world.setSign, setWallSign
+    remove entity (id)                          entity.remove
+    point player towards (x y z)                player.setDirection
+    switch to world [name] / world list         world.setWorld, getWorlds
+    explosion at (x y z) power (n)              world.createExplosion
+    set health / food                           player.setHealth, setFoodLevel
+    show title [text]                           player.sendTitle
+
+`setBlocks` is most of the value. `setSign` is second, because a build nobody
+can label is a build nobody can explain, and every idea below wants labels.
+
+Effort: low -- the server already does all of it, this is extension plumbing.
+Payoff: unlocks everything else, and makes what already exists faster.
+
+
+1. THE MICROPHONE
+-----------------
+Scratch reports loudness as a number between 0 and 100, with no setup, no
+permission dialog beyond the browser's, and no library. Point it at a room full
+of children and it is the most immediate input any of them have ever had.
+
+  - A tower that grows while you shout and stops when you stop. Ten seconds
+    from starting the project to a child understanding a loop.
+  - A landscape whose hills are the last thirty seconds of noise in the room:
+    a chart of the lesson, that you can walk on.
+  - Clap to place. Loudness over a threshold drops a block at the turtle.
+  - A room-volume meter on a wall, in coloured concrete, updating live.
+
+The first of these is probably the single best beginner example this project
+could ship. It is four blocks long and it is astonishing.
+
+Effort: very low. Payoff: very high. Do this one first.
+
+
+2. THE CAMERA
+-------------
+Scratch's video sensing reports motion and direction in any region of the
+stage. That is a gesture sensor for nothing.
+
+  - Wave left and right to steer the turtle; it draws where you wave.
+  - A wall of blocks mirroring the motion grid, so you paint by moving.
+  - Jump to build up, crouch to build down.
+
+Worth knowing the limits before promising too much: it reports motion, not
+where your hands are, so it is a good "something moved over here" sensor and a
+poor skeleton tracker. Also it wants a webcam and permission, which in a school
+is sometimes a conversation.
+
+Effort: low. Payoff: high, with caveats.
+
+
+3. THE STAGE AS A PLAN VIEW
+---------------------------
+The thing Scratch has that no Python script has is a two dimensional drawing
+surface with sprites you can pick up and move.
+
+  - Drag a sprite on the stage, and a marker moves in the world to match. Now
+    the stage is a map of the build site.
+  - Draw with the Scratch pen, then extrude what you drew into the world: the
+    stage becomes a floor plan and the world becomes the house.
+  - Two sprites, and the world builds a road between them.
+
+The pen version is the good one. Drawing a shape and then walking around
+inside it, at scale, is a genuinely startling first experience of what
+coordinates mean.
+
+Effort: medium -- needs `setBlocks` (see 0) or it is unbearably slow.
+Payoff: very high.
+
+
+4. MINECRAFT AS THE INPUT, NOT THE OUTPUT
+-----------------------------------------
+`getHit` already exists: hit a block with a sword and Scratch finds out. That
+inverts the whole relationship and almost nothing uses it.
+
+  - A piano. Build twelve blocks, hit them, Scratch plays the notes. Scratch
+    already has instruments and pitch, so the sound is free.
+  - A quiz buzzer: the question is on the stage, the answers are blocks, and
+    you run to the one you think is right.
+  - A light switch, a doorbell, a combination lock. Three blocks in the right
+    order opens the door.
+  - A drum machine: a row of blocks is a bar, and hitting one toggles it.
+
+Effort: low, and it works today.
+Payoff: very high, and it is the most distinctive thing on this list.
+
+
+5. TWO CHILDREN, TWO HOUSES
+---------------------------
+Scratch cloud variables sync between everyone running the same project. Two
+children on the same Minecraft server, each running Scratch at home, sharing
+state through the cloud.
+
+  - Collaborative build: what one places, the other sees.
+  - Send a message that appears as a sign in the other one's world.
+  - A race: first to reach the marker sets the cloud variable and wins.
+
+Caveats worth stating plainly: cloud variables are numbers only, they are rate
+limited, and they need a Scratch account with the project shared, which is a
+teacher-and-parent conversation rather than a technical one. Encoding text as
+numbers to get round the numbers-only limit is itself a decent lesson.
+
+Effort: medium, mostly non-technical.
+Payoff: high, and unlike anything else here.
+
+
+6. LIVE CONTROL: THE WORLD AS A PLOTTER
+---------------------------------------
+Arrow keys move the turtle in real time, with the pen down. An Etch A Sketch
+the size of a football pitch.
+
+Add `save turtle` / `restore turtle`, which already exist, and you have undo.
+Add a costume-per-block palette and you have a paint program whose canvas you
+can stand on.
+
+Effort: low. Payoff: medium-high, and it is a good half hour.
+
+
+7. THE THINGS THAT ARE REALLY MATHS
+-----------------------------------
+The existing examples are here -- spiral, trefoil knot, 3d wave -- and they are
+good. Worth extending, but they are not what makes Scratch special, so they
+should not crowd out 1 to 6.
+
+  - L-systems: four rules and a turtle gives you a tree, a fern, a dragon
+    curve. Recursion made of wood and leaves.
+  - Menger sponge and Sierpinski, which are natural in a cubic world.
+  - Cellular automata: Game of Life on a vertical wall, one generation per
+    second, running live. Rule 30 grown upward as a tower.
+  - A maze generated and then built, so you have to walk out of it.
+
+Effort: low each. Payoff: medium, and they are reliable lesson filler.
+
+
+8. THE STARTER LADDER
+---------------------
+Not a project: an ordering. The fourteen examples in scratch/examples have no
+sequence and no readme, so a teacher meeting them has to guess which to open.
+
+A numbered path -- hello world, one block, a tower, a loop, the turtle, the
+microphone, getHit, your own idea -- with one line each on what is new in it,
+is probably worth more classroom time than any single new example.
+
+Effort: low. Payoff: high, and unglamorous.
+
+
+NOTES
+-----
+- Scratch's audience starts younger than pyncraft's. An example that needs a
+  paragraph of explanation before it does anything has already lost. The
+  microphone tower does something in four blocks.
+- Prefer examples that survive a bad network. One round trip per block is
+  noticeable on a school connection and miserable on a phone hotspot, which
+  is another argument for (0).
+- .sb3 files are zip archives containing project.json, so they are diffable if
+  anyone writes a generator, and opaque binaries if nobody does. Worth doing
+  before there are fifty of them.
+- Anything that is really "fetch a dataset and turn it into blocks" belongs in
+  pyncraft/examples, not here.

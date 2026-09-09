@@ -973,6 +973,110 @@ class FruitJuice {
                     }
             },            
             {
+                    "opcode": "fill",
+                    "blockType": "command",
+                    "text": "fill from (x [x1] y [y1] z [z1]) to (x [x2] y [y2] z [z2]) with [b]",
+                    "arguments": {
+                        "x1": {"type": "string", "defaultValue": "~"},
+                        "y1": {"type": "string", "defaultValue": "~"},
+                        "z1": {"type": "string", "defaultValue": "~"},
+                        "x2": {"type": "string", "defaultValue": "~"},
+                        "y2": {"type": "string", "defaultValue": "~"},
+                        "z2": {"type": "string", "defaultValue": "~"},
+                        "b": {"type": "string", "menu": "blockMenu", "defaultValue": "Stone"},
+                    }
+            },
+            {
+                    "opcode": "sign",
+                    "blockType": "command",
+                    "text": "sign at (x [x] y [y] z [z]) facing [dir] saying [l1] [l2] [l3] [l4]",
+                    "arguments": {
+                        "x": {"type": "string", "defaultValue": "~"},
+                        "y": {"type": "string", "defaultValue": "~"},
+                        "z": {"type": "string", "defaultValue": "~"},
+                        "dir": {"type": "string", "menu": "signMenu", "defaultValue": "NORTH"},
+                        "l1": {"type": "string", "defaultValue": "made in"},
+                        "l2": {"type": "string", "defaultValue": "Scratch"},
+                        "l3": {"type": "string", "defaultValue": ""},
+                        "l4": {"type": "string", "defaultValue": ""},
+                    }
+            },
+            {
+                    "opcode": "explode",
+                    "blockType": "command",
+                    "text": "explosion at (x [x] y [y] z [z]) power [power]",
+                    "arguments": {
+                        "x": {"type": "string", "defaultValue": "~"},
+                        "y": {"type": "string", "defaultValue": "~"},
+                        "z": {"type": "string", "defaultValue": "~"},
+                        "power": {"type": "number", "defaultValue": 3},
+                    }
+            },
+            {
+                    "opcode": "removeEntity",
+                    "blockType": "command",
+                    "text": "remove entity [id]",
+                    "arguments": {
+                        "id": {"type": "string", "defaultValue": ""},
+                    }
+            },
+            {
+                    "opcode": "pointPlayer",
+                    "blockType": "command",
+                    "text": "point player towards (x [x] y [y] z [z])",
+                    "arguments": {
+                        "x": {"type": "string", "defaultValue": "~"},
+                        "y": {"type": "string", "defaultValue": "~"},
+                        "z": {"type": "string", "defaultValue": "~"},
+                    }
+            },
+            {
+                    "opcode": "worldList",
+                    "blockType": "reporter",
+                    "text": "list of worlds",
+                    "arguments": {}
+            },
+            {
+                    "opcode": "currentWorld",
+                    "blockType": "reporter",
+                    "text": "current world",
+                    "arguments": {}
+            },
+            {
+                    "opcode": "switchWorld",
+                    "blockType": "command",
+                    "text": "switch to world [name]",
+                    "arguments": {
+                        "name": {"type": "string", "defaultValue": "world"},
+                    }
+            },
+            {
+                    "opcode": "setHealth",
+                    "blockType": "command",
+                    "text": "set health to [v]",
+                    "arguments": {
+                        "v": {"type": "number", "defaultValue": 20},
+                    }
+            },
+            {
+                    "opcode": "setFood",
+                    "blockType": "command",
+                    "text": "set food to [v]",
+                    "arguments": {
+                        "v": {"type": "number", "defaultValue": 20},
+                    }
+            },
+            {
+                    "opcode": "showTitle",
+                    "blockType": "command",
+                    "text": "show title [title] subtitle [sub] for [stay] frames",
+                    "arguments": {
+                        "title": {"type": "string", "defaultValue": "Hello!"},
+                        "sub": {"type": "string", "defaultValue": ""},
+                        "stay": {"type": "number", "defaultValue": 60},
+                    }
+            },
+            {
                     "opcode": "suspend",
                     "blockType": "command",
                     "text": "suspend drawing",
@@ -1144,6 +1248,14 @@ class FruitJuice {
                         {text:"up",value:"UP"},
                         {text:"down",value:"DOWN"}]
             },
+            // A sign can only face sideways. dirMenu offers up and down
+            // as well, and BlockFace.UP throws when it reaches Bukkit's
+            // Rotatable.setRotation, so the sign block gets its own menu
+            // with the four compass points and nothing else on it.
+            signMenu: [{text:"north",value:"NORTH"},
+                       {text:"south",value:"SOUTH"},
+                       {text:"east",value:"EAST"},
+                       {text:"west",value:"WEST"}],
             blockMenu: { acceptReporters: true, items: "getBlockMenuItems" }
             }
         };
@@ -1956,6 +2068,94 @@ class FruitJuice {
     setPlayerPos({x,y,z}) {
       var [x,y,z] = this.parseXYZ(x,y,z);
       this.send("player.setPos("+x+","+y+","+z+")");
+    };
+
+    // ---- things the server has always understood and the extension did not --
+
+    // A cuboid in one command instead of one command per block.
+    //
+    // Every block placed from Scratch used to be its own round trip, including
+    // the deferred path: `suspend` collects them in a Map and `resume` sends
+    // the lot, but still as one world.setBlock each. A wall 20 by 10 is 200
+    // messages and, on a school connection, a visible wait. world.setBlocks
+    // fills the whole box server-side, and the server has done so since long
+    // before this extension existed.
+    fill({x1,y1,z1,x2,y2,z2,b}) {
+        var [ax,ay,az] = this.parseXYZ(x1,y1,z1).map(Math.floor);
+        var [bx,by,bz] = this.parseXYZ(x2,y2,z2).map(Math.floor);
+        var block = this.resolveBlock(b);
+
+        // Anything deferred inside the box would be written afterwards and
+        // would punch holes in the fill, so those are dropped: the fill is
+        // what the user asked for last.
+        if (this.savedBlocks != null) {
+            var lox = Math.min(ax,bx), hix = Math.max(ax,bx);
+            var loy = Math.min(ay,by), hiy = Math.max(ay,by);
+            var loz = Math.min(az,bz), hiz = Math.max(az,bz);
+            for (var key of Array.from(this.savedBlocks.keys())) {
+                var p = key.split(",").map(Number);
+                if (p[0] >= lox && p[0] <= hix && p[1] >= loy && p[1] <= hiy &&
+                    p[2] >= loz && p[2] <= hiz) {
+                    this.savedBlocks.delete(key);
+                }
+            }
+        }
+        this.send("world.setBlocks("+ax+","+ay+","+az+","+bx+","+by+","+bz+","+block+")");
+    };
+
+    sign({x,y,z,dir,l1,l2,l3,l4}) {
+        var [sx,sy,sz] = this.parseXYZ(x,y,z).map(Math.floor);
+        // A standing sign needs a solid block under it or it drops off, which
+        // is a confusing thing to debug from Scratch, so say so rather than
+        // fixing it silently -- putting a post there would be building
+        // something the user did not ask for.
+        this.send("world.setSign("+sx+","+sy+","+sz+",OAK_SIGN,"+dir+","+
+                  l1+","+l2+","+l3+","+l4+")");
+    };
+
+    explode({x,y,z,power}) {
+        var [ex,ey,ez] = this.parseXYZ(x,y,z).map(Math.floor);
+        this.send("world.createExplosion("+ex+","+ey+","+ez+","+power+")");
+    };
+
+    removeEntity({id}) {
+        // Answers, unlike most setters, so it is sent as a request: without
+        // reading the reply the connection ends up one message out of step.
+        return this.sendAndReceive("entity.remove("+id+")");
+    };
+
+    pointPlayer({x,y,z}) {
+        // A direction, not a place: the server wants the vector to look along,
+        // so this is the difference from where the player is standing.
+        var [tx,ty,tz] = this.parseXYZ(x,y,z);
+        return this.getPosition().then(pos =>
+            this.send("player.setDirection("+(tx-pos[0])+","+(ty-pos[1])+","+
+                      (tz-pos[2])+")"));
+    };
+
+    worldList() {
+        return this.sendAndReceive("world.getWorlds()")
+            .then(names => names.split("|").join(", "));
+    };
+
+    currentWorld() {
+        return this.sendAndReceive("world.getCurrentWorld()");
+    };
+
+    switchWorld({name}) {
+        return this.sendAndReceive("world.setWorld("+name+")");
+    };
+
+    setHealth({v}) {
+        this.send("player.setHealth("+v+")");
+    };
+
+    setFood({v}) {
+        this.send("player.setFoodLevel("+v+")");
+    };
+
+    showTitle({title,sub,stay}) {
+        this.send("player.sendTitle("+title+","+sub+",10,"+stay+",10)");
     };
 
     setPlayer({playerName}) {

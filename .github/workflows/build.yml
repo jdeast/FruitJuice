@@ -98,6 +98,13 @@ jobs:
       - name: Connection and fallback tests
         run: node test/scratch/connect.test.js
 
+      # Every failure this catches is silent in the Scratch editor: a block
+      # naming a menu that does not exist renders as an empty dropdown, an
+      # opcode with no method does nothing when clicked, and a command the
+      # plugin removed comes back as a Fail in a console nobody opens.
+      - name: Block palette and command coverage
+        run: node test/scratch/blocks.test.js
+
   # Builds against a NEWER Minecraft API than the one pinned in the pom.
   #
   # The pinned dependency verifies what we ship. It does not verify that the
