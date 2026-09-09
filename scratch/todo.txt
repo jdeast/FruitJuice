@@ -253,6 +253,38 @@ are examples nobody has written yet.
 Effort: low each. Payoff: high, and unlike anything else in scratch/examples.
 
 
+11. ONE CLICK, ONE LAPTOP, NO SERVER
+------------------------------------
+The reason to keep an eye on Forge is not its features, it is its setup. Raspberry
+Jam Mod runs inside single player: install Forge, open a world, and the API
+works against your own game. No server process, no port, no address to type.
+For one child alone on one laptop that really is less to do than what this
+project asks for.
+
+Which is worth answering rather than dismissing, because the answer is easy.
+A script that:
+
+    downloads a Paper jar of a known version
+    writes eula=true, and online-mode=false, and a flat creative world
+    starts it
+    prints "now connect Minecraft to localhost:25565, and Scratch to
+    localhost:14711"
+
+gives the same "one laptop, nothing to configure" experience with a vanilla
+client and a current Minecraft. README_server_setup.md already explains all of
+it for the networked case; this is the same thing with every question already
+answered.
+
+Forge's advantage has decayed anyway: Raspberry Jam Mod's last release is 0.94,
+May 2018, built with ForgeGradle 1.2 against "Minecraft 1.8+". Going that way
+today means playing a seven year old Minecraft or porting the mod yourself,
+which is far more work than running a server -- and it still cannot reach
+Bedrock, tablets or consoles, which a Bukkit server can through Geyser.
+
+Effort: low. Payoff: high, and it removes the only real argument for the
+other approach.
+
+
 NOTES
 -----
 - Scratch's audience starts younger than pyncraft's. An example that needs a

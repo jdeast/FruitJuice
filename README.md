@@ -180,6 +180,15 @@ The jar lands in `target/`.
  - 0.5.0 - Twelve bugs found in a full read of the plugin, the ones that bite hardest being commas silently dropped from chat messages, malformed input getting no reply at all so the client hung forever, `getEntity` throwing when nobody was online, and negative coordinates truncating toward zero instead of flooring. Command and event queues are now thread-safe and bounded. Sessions can build in any world, not just the first, via `world.setWorld`. Scratch pairs each reply with the request that asked for it, so overlapping blocks no longer swap answers, and says so plainly when it is not connected instead of doing nothing. First unit tests and CI.
  - 0.5.1 - plugin.yml fixes found by publishing to Hangar. `author` was given a list, but it is specified as a single string -- several people go in `authors` -- and `api-version` was unquoted, so YAML read it as a number rather than a version string. Bukkit had never minded either, which is why both survived; a stricter parser rejected the whole descriptor and said only 'could not load metadata'.
 
+## Licence and ancestry
+
+FruitJuice is Apache 2.0, and so is
+[RaspberryJuice](https://github.com/zhuowei/RaspberryJuice), which it descends
+from, so the licence is unchanged along the whole line. The Scratch extension
+is a port of [rjm.js](https://github.com/arpruss/rjmscratch), which is MIT, and
+carries that notice at the top of the file. `NOTICE` sets out the whole
+lineage; the version history above is the record of what changed.
+
 ## Contributors
 
  - [jdeast](https://github.com/jdeast)

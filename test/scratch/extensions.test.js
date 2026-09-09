@@ -40,12 +40,23 @@ function load(file, className) {
 
 // ── licence, because it came from somewhere ────────────────────────────────
 
-["fetch.js", "gamepad.js"].forEach(function (f) {
+// scratch.js is a port of arpruss's MIT-licensed rjm.js, and fetch.js and
+// gamepad.js come from the same place. MIT asks that the notice be included in
+// "all copies or substantial portions", which a port is. A header is easy to
+// lose in a refactor and nothing else would notice it had gone.
+["fetch.js", "gamepad.js", "scratch.js"].forEach(function (f) {
     const src = fs.readFileSync(path.join(DOCS, f), "utf8");
     ok(f + " keeps the MIT notice and the attribution",
        /MIT License/.test(src) && /arpruss/.test(src) &&
        /Permission is hereby granted/.test(src));
 });
+
+// Apache 2.0 section 4(d): if the work carries a NOTICE, derivatives must too.
+const notice = fs.readFileSync(path.join(DOCS, "..", "NOTICE"), "utf8");
+ok("the NOTICE names the plugin's ancestry",
+   /RaspberryJuice/.test(notice) && /Apache License, Version 2\.0/.test(notice));
+ok("the NOTICE names the extension's ancestry",
+   /rjmscratch/.test(notice) && /MIT License/.test(notice));
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
 

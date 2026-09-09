@@ -1,3 +1,27 @@
+// FruitJuice: a Scratch 3.0 extension for Minecraft.
+//
+// Derived from rjm.js, the Scratch extension for Raspberry Jam Mod:
+// https://github.com/arpruss/rjmscratch
+//
+//   MIT License. Copyright (c) 2020 arpruss (Alexander R. Pruss).
+//
+//   Permission is hereby granted, free of charge, to any person obtaining a
+//   copy of this software and associated documentation files (the
+//   "Software"), to deal in the Software without restriction, including
+//   without limitation the rights to use, copy, modify, merge, publish,
+//   distribute, sublicense, and/or sell copies of the Software, and to permit
+//   persons to whom the Software is furnished to do so, subject to the
+//   following conditions: the above copyright notice and this permission
+//   notice shall be included in all copies or substantial portions of the
+//   Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+//
+// Ported from Raspberry Jam Mod, a Forge mod, to FruitJuice, a Bukkit plugin,
+// with arpruss's help. Modifications copyright (c) the FruitJuice
+// contributors, licensed under Apache 2.0 -- see LICENSE and NOTICE.
+//
+// The class below is still called RJMTurtle, which is as good a record of
+// where this came from as any notice.
+
 class RJMTurtle {
     constructor() {
         this.block = "1";
