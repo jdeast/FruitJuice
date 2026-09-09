@@ -53,8 +53,21 @@ HOW_TO_SET_THE_SERVER = (
     " block -- a connection that works is remembered.")
 
 
+FIRST_TIME = (
+    "FIRST TIME ON THIS BROWSER, READ ME." + chr(10) + chr(10) +
+    "This connects to localhost, because nothing has been remembered here"
+    " yet." + chr(10) +
+    "If your Minecraft is somewhere else, swap this block for" + chr(10) +
+    "    connect to Minecraft on [address] port [port]" + chr(10) +
+    "and run it once. A connection that works is remembered, so from then"
+    " on" + chr(10) +
+    "this block finds it and you never type the address again." + chr(10) +
+    chr(10) +
+    "The `my Minecraft address` block reports what is currently saved.")
+
+
 def connect(message):
-    return [fj("connectSaved"), fj("chat", msg=message)]
+    return [fj("connectSaved").says(FIRST_TIME), fj("chat", msg=message)]
 
 
 # ── 1. shout at it ─────────────────────────────────────────────────────────
@@ -170,67 +183,128 @@ def be_the_controller():
 # ── 3. the piano ───────────────────────────────────────────────────────────
 
 def piano():
-    """Eight blocks in a row. Hit one and Scratch plays the note.
+    """An octave, one block per key, that you can pick out a tune on.
 
-    This is the relationship the other way round: Minecraft is the input and
-    Scratch is the output. `sword hit vector position` reports the block the
-    player last right-clicked with a sword, as "x,y,z", and the x tells you
-    which key it was.
+    ONE BLOCK PER KEY. Eight of them, and that is the whole width. Two-wide
+    keys let a black key sit between two whites the way a real one does, but
+    sixteen blocks is too far to walk to play a tune, and being able to reach
+    the next note matters more than being anatomically correct.
 
-    Nothing here needs the server to do anything it could not already do in
-    2013 -- the hit queue is inherited from RaspberryJuice. The block was in
-    scratch.js all along, commented out, because it threw an error every time
-    a hit arrived.
+    So the black keys go where they can: on the BACK of the white keys they
+    follow, raised a block. C and D get one, E does not, F, G and A get one, B
+    and the top C do not. That two-then-three grouping is the thing a player
+    actually navigates by -- it is how you find middle C without looking -- and
+    it survives at one block per key even though the between-ness does not.
+
+    It also makes the note arithmetic disappear. A black key is a semitone
+    above the white one it sits on, so there is no second table: the note is
+    the white note plus one if you hit the raised block.
+
+    LOW ON THE LEFT. Pitch rises as x DECREASES, which is backwards as a
+    number and right as a piano: standing where the sign is readable, the low
+    notes are on your left, the way they are on every keyboard ever built.
     """
     p = Project(sprite_name="Piano").uses("music")
     x0, y0, z0 = p.var("x0"), p.var("y0"), p.var("z0")
-    i, hit, key = p.var("i"), p.var("hit"), p.var("key")
-    # A major scale in semitones above the root. Not a string of digits: 11
-    # and 12 are two characters each, so "letter 7 of ..." cannot say them.
-    scale = p.list("scale", [0, 2, 4, 5, 7, 9, 11, 12])
+    i, hit = p.var("i"), p.var("hit")
+    off, semi = p.var("key"), p.var("semitone")
 
-    p.note("A PIANO YOU STAND ON.\n\n"
-           "Green flag builds eight keys in front of you. Hit one with a "
-           "sword\n(right click) and Scratch plays the note.\n\n"
+    # Semitones above the root for the eight white keys of an octave.
+    whitenote = p.list("white notes", [0, 2, 4, 5, 7, 9, 11, 12])
+    # Which white keys carry a black one: C, D, then F, G, A. Counting from
+    # the low end at zero, so E, B and the top C are the ones left out.
+    blackpos = p.list("black keys on", [0, 1, 3, 4, 5])
+    names = p.list("note names",
+                   ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A",
+                    "A#", "B", "C"])
+
+    p.note("A PIANO YOU STAND AT." + chr(10) + chr(10) +
+           "Green flag builds an octave in front of you. Hit a key with a "
+           "sword and" + chr(10) +
+           "Scratch plays the note and shows its name on screen." + chr(10) +
+           chr(10) +
+           "ONE BLOCK PER KEY, eight of them, low on the left. The black keys "
+           "sit on" + chr(10) +
+           "the BACK of the keys they belong to, raised a block: two of them, "
+           "a gap," + chr(10) +
+           "then three, a gap. That grouping is how you find your way around "
+           "a real" + chr(10) +
+           "keyboard without looking, and it is the part worth keeping." +
+           chr(10) + chr(10) +
+           "THE SWORD MATTERS. The server only counts a hit when you are "
+           "holding a" + chr(10) +
+           "sword -- any sword, netherite included. Left or right click is "
+           "set by" + chr(10) +
+           "`hitclick` in the server's config.yml; LEFT is the default." +
+           chr(10) + chr(10) +
            "This is the interesting direction: Minecraft is the INPUT and "
-           "Scratch\nis the output. `sword hit vector position` gives the "
-           "block you hit as\n\"x,y,z\", and the x says which key it was.\n\n"
-           "Try: change 60 to move the whole keyboard up or down an octave. "
-           "60 is\nmiddle C. Or change the instrument -- 1 is a piano, 11 is "
-           "a wooden\nflute, 13 is a marimba.\n\n"
-           "The `scale` list holds 0 2 4 5 7 9 11 12 -- the gaps between the "
-           "white\nkeys of a real octave in semitones. That is why this "
-           "sounds like a\nscale and not like eight steps up a chromatic "
-           "ladder. Change the list\nto 0 2 3 5 7 8 10 12 for a minor one.")
+           "Scratch is" + chr(10) +
+           "the output. `sword hit vector position` gives the block you hit "
+           "as" + chr(10) +
+           "\"x,y,z\". The x says which key. The y says whether you got the "
+           "raised" + chr(10) +
+           "black one -- and a black key is just a semitone above the white "
+           "one it" + chr(10) +
+           "sits on, so that is the entire difference: add 1." + chr(10) +
+           chr(10) +
+           "Try: change 60 to move the whole keyboard an octave. 60 is middle "
+           "C. Or" + chr(10) +
+           "change the instrument -- 1 is a piano, 11 a wooden flute, 13 a "
+           "marimba." + HOW_TO_SET_THE_SERVER)
+
+    # Key 0 is the LOW one and sits at the HIGH x, so that pitch runs left to
+    # right for somebody standing on the near side reading the sign.
+    def at(key):
+        return sub(add(x0, 7), key)
 
     p.script(
         when_flag(),
-        *connect("Hit the blocks with a sword."),
+        *connect("Hit the keys with a sword. Low note on the left."),
         set_instrument(1),
         set_var(x0, add(player_x(), 2)),
         set_var(y0, player_y()),
         set_var(z0, add(player_z(), 2)),
-        # Lay out eight keys running east.
-        set_var(i, 0),
-        repeat(8,
-               fj("setBlock", x=add(x0, i), y=y0, z=z0,
-                  b=menu("blockMenu", "WHITE_CONCRETE")),
+
+        # The white keys are one fill: eight wide, three deep, flat on the
+        # ground. Twenty-four setBlocks would do the same thing twenty-four
+        # times as slowly.
+        fj("fill", x1=x0, y1=y0, z1=z0,
+           x2=add(x0, 7), y2=y0, z2=add(z0, 2),
+           b=menu("blockMenu", "WHITE_CONCRETE")),
+
+        # Five black keys, standing proud on the back row.
+        set_var(i, 1),
+        repeat(5,
+               fj("setBlock", x=at(item_of(i, blackpos)), y=add(y0, 1),
+                  z=add(z0, 2), b=menu("blockMenu", "BLACK_CONCRETE")),
                change_var(i, 1)),
-        fj("sign", x=sub(x0, 1), y=add(y0, 1), z=z0, dir="NORTH",
-           l1="hit these", l2="with a sword", l3="", l4=""),
+
+        fj("sign", x=at(-1), y=add(y0, 1), z=z0, dir=menu("signMenu", "NORTH"),
+           l1="an octave", l2="low on the left", l3="hit with a sword", l4=""),
+
         forever(
             set_var(hit, fj("getHit")),
             if_then(
                 block("operator_not", OPERAND=equals(hit, "")),
-                # x of the block hit, minus where the keyboard starts.
-                set_var(key, sub(fj("extractFromVector", vector=hit,
-                                    coordinate=menu("coordinateMenu", 0)), x0)),
+                # Which key, counting from the low end.
+                set_var(off, sub(add(x0, 7),
+                                 fj("extractFromVector", vector=hit,
+                                    coordinate=menu("coordinateMenu", 0)))),
                 if_then(
                     block("operator_and",
-                          OPERAND1=block("operator_not", OPERAND=lt(key, 0)),
-                          OPERAND2=lt(key, 8)),
-                    # A major scale: the white notes, not eight semitones.
-                    play_note(add(60, item_of(add(key, 1), scale)), 0.25),
+                          OPERAND1=block("operator_not", OPERAND=lt(off, 0)),
+                          OPERAND2=lt(off, 8)),
+                    set_var(semi, item_of(add(off, 1), whitenote)),
+                    # The raised block is the black key, a semitone above the
+                    # white one it stands on.
+                    if_then(
+                        equals(sub(fj("extractFromVector", vector=hit,
+                                      coordinate=menu("coordinateMenu", 1)),
+                                   y0), 1),
+                        change_var(semi, 1)),
+                    play_note(add(60, semi), 0.25),
+                    fj("showTitle", title=item_of(add(semi, 1), names),
+                       sub="", stay=20),
                 ),
             ),
             wait(0.05),

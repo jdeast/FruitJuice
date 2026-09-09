@@ -84,6 +84,17 @@ class Block(object):
         self.opcode = opcode
         self.inputs = inputs or {}
         self.fields = fields or {}
+        self.comment = None
+
+    def says(self, text):
+        """Attach a comment to this block, where it will actually be read.
+
+        A comment floating loose in the corner of the script area is a comment
+        nobody reads. One pinned to the block it is about arrives at the moment
+        the reader is looking at that block and wondering.
+        """
+        self.comment = text
+        return self
 
 
 def block(opcode, **inputs):
@@ -280,6 +291,7 @@ class Project(object):
         self.vars = []
         self.lists = []
         self.scripts = []
+        self.attached = []
         self.extensions = ["FruitJuice"]
         self.notes = []
 
@@ -324,6 +336,8 @@ class Project(object):
         entry = {"opcode": blk.opcode, "next": None, "parent": parent,
                  "inputs": {}, "fields": {}, "shadow": False, "topLevel": False}
         out[bid] = entry
+        if blk.comment:
+            self.attached.append((bid, blk.comment))
 
         for name, value in blk.fields.items():
             entry["fields"][name] = value
@@ -381,6 +395,7 @@ class Project(object):
     def build(self):
         out = {}
         counter = [0]
+        self.attached = []
         for x, y, blocks in self.scripts:
             first = self._emit_stack(blocks, None, out, counter)
             if first:
@@ -393,10 +408,16 @@ class Project(object):
             (v.id, [v.name, v.value]) for v in self.vars)
         self.sprite["lists"] = dict(
             (l.id, [l.name, l.items]) for l in self.lists)
-        self.sprite["comments"] = dict(
+        comments = dict(
             ("c%d" % i, {"blockId": None, "x": x, "y": y, "width": 380,
                          "height": 190, "minimized": False, "text": text})
             for i, (text, x, y) in enumerate(self.notes))
+        for j, (bid, text) in enumerate(self.attached):
+            cid = "a%d" % j
+            comments[cid] = {"blockId": bid, "x": 0, "y": 0, "width": 340,
+                             "height": 130, "minimized": False, "text": text}
+            out[bid]["comment"] = cid
+        self.sprite["comments"] = comments
         return {
             "targets": [self.stage, self.sprite],
             "monitors": [],
