@@ -114,6 +114,14 @@ jobs:
       - name: Reply framing
         run: node test/scratch/framing.test.js
 
+      # The server reports every failure as a line starting "Fail,". That was
+      # checked in one place, so everywhere else the error became the block's
+      # VALUE: a misspelled block name showed up as a reporter's answer and a
+      # command block just did nothing, with the real explanation only in a
+      # server console the child who caused it cannot see.
+      - name: Server errors reach the reader
+        run: node test/scratch/errors.test.js
+
       # Every failure this catches is silent in the Scratch editor: a block
       # naming a menu that does not exist renders as an empty dropdown, an
       # opcode with no method does nothing when clicked, and a command the

@@ -250,11 +250,46 @@ public class RemoteSession {
             }
         } catch (Exception e) {
 
-            plugin.getLogger().warning("Error occured handling command");
+            plugin.getLogger().warning("Error handling " + c + ": " + e);
             e.printStackTrace();
-            send("Fail,Please check out minecraft server console");
+            // Tell the CALLER what went wrong, not just the console.
+            //
+            // This used to reply "Please check out minecraft server console",
+            // which is useless to the person who caused it: a child in Scratch
+            // cannot see the console, and the reply is the only thing that
+            // reaches them. Every mistake -- a misspelled block, a letter typed
+            // where a number goes, a facing that is not a direction -- arrived
+            // as the same sentence.
+            //
+            // The exception's own message names the thing that was wrong. Class
+            // name too, because NumberFormatException's message is
+            // 'For input string: "abc"' and needs the context.
+            send("Fail," + c + ": " + describe(e));
 
         }
+    }
+
+    /**
+     * A short, single-line description of a failure, safe to send to a client.
+     *
+     * Single line because the protocol is line-based: a newline in here would
+     * be read as the end of the reply and the rest as an answer to whatever was
+     * asked next.
+     */
+    static String describe(Throwable e) {
+        String message = e.getMessage();
+        String name = e.getClass().getSimpleName();
+        String text;
+        if (message == null || message.isEmpty()) {
+            text = name;
+        } else if (e instanceof IllegalArgumentException || e instanceof NumberFormatException) {
+            // These already read as an explanation on their own.
+            text = message;
+        } else {
+            text = name + ": " + message;
+        }
+        text = text.replace('\n', ' ').replace('\r', ' ');
+        return text.length() > 200 ? text.substring(0, 197) + "..." : text;
     }
 
     /**

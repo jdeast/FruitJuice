@@ -1395,7 +1395,10 @@ class FruitJuice {
     // Appending only, so every existing block number keeps its meaning.
     refreshBlockTypes() {
         var rjm = this;
-        return this.sendAndReceive("world.getBlockTypes()").then(function(reply) {
+        // quiet: an older server answers this with a Fail and that is fine --
+        // the built-in block list is the fallback, and it is not the reader's
+        // problem to solve.
+        return this.sendAndReceive("world.getBlockTypes()", {quiet: true}).then(function(reply) {
             if (!reply || reply.indexOf("Fail,") === 0) return;   // older server
             var names = reply.split(",").filter(function(n) {
                 return n.length > 0 && n === n.toUpperCase() && n.indexOf(" ") < 0;
@@ -1593,8 +1596,10 @@ class FruitJuice {
         }
     };
 
-    sendAndReceive(msg) {
+    sendAndReceive(msg, options) {
         var rjm = this;
+        // quiet: the caller handles a Fail itself and does not want it shown.
+        var quiet = !!(options && options.quiet);
         return new Promise(function(resolve, reject) {
             if (!rjm.isConnected()) {
                 rjm.blockProblem("Not connected to minecraft. Use the connect " +
@@ -1618,6 +1623,26 @@ class FruitJuice {
 
             rjm.pending.push(waiter);
             rjm.send(msg);
+        }).then(function (reply) {
+            // A SERVER ERROR IS NOT AN ANSWER.
+            //
+            // The server reports every failure as a line beginning "Fail,".
+            // This checked for that in exactly one place -- refreshBlockTypes
+            // -- so everywhere else the error became the block's VALUE. A
+            // misspelled block name made a reporter block display
+            // "Fail,world.setBlock: no block called STOEN" as its answer, and
+            // a command block simply did nothing. Nothing threw, nothing was
+            // logged in the browser, and the only real explanation was in a
+            // server console a child has no way to see.
+            //
+            // The reply is still returned rather than rejected: existing
+            // scripts carry on exactly as they did, they just stop failing
+            // silently. blockProblem shows each distinct problem once, which
+            // matters because these run inside forever loops.
+            if (!quiet && typeof reply === "string" && reply.indexOf("Fail,") === 0) {
+                rjm.blockProblem("Minecraft could not do that. " + reply.slice(5));
+            }
+            return reply;
         });
     };
     

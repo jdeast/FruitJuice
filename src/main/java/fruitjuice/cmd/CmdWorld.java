@@ -176,6 +176,13 @@ public class CmdWorld {
 			Location loc2 = session.parseRelativeBlockLocation(args[3], args[4], args[5]);
 			String blockType = args[6];
 
+			long volume = fillVolume(loc1, loc2);
+			if (volume > MAX_FILL_BLOCKS) {
+				session.send("Fail,that fill is " + volume + " blocks; the most is "
+						+ MAX_FILL_BLOCKS + ". Check the corner coordinates.");
+				return;
+			}
+
 			setCuboid(loc1, loc2, blockType);
 
 			// world.getPlayerIds
@@ -275,7 +282,24 @@ public class CmdWorld {
 			// world.explode
 		} else if (command.equals("createExplosion")) {
 			Location loc = session.parseRelativeBlockLocation(args[0], args[1], args[2]);
-			Float power = Float.parseFloat(args[3]);
+			float power = Float.parseFloat(args[3]);
+
+			// A typed digit must not be able to flatten the world.
+			//
+			// This went straight to createExplosion with whatever arrived. TNT
+			// is power 4 and a charged creeper is 6, so the block's default of
+			// 3 is an ordinary bang -- but an extra zero is a crater the server
+			// has to compute in one tick, on the main thread, and this is a
+			// server children type numbers into.
+			if (Float.isNaN(power) || power < 0f) {
+				session.send("Fail,explosion power must be a positive number, got " + args[3]);
+				return;
+			}
+			if (power > MAX_EXPLOSION_POWER) {
+				session.send("Fail,explosion power " + args[3] + " is too big; the most is "
+						+ MAX_EXPLOSION_POWER + " (TNT is 4)");
+				return;
+			}
 
 			world.createExplosion(loc, power);
 
@@ -302,6 +326,29 @@ public class CmdWorld {
 			session.plugin.getLogger().warning(preFix + command + " is not supported.");
 			session.send("Fail," + preFix + command + " is not supported.");
 		}
+	}
+
+	/**
+	 * The most blocks one setBlocks may write.
+	 *
+	 * A cuboid fill runs on the main server thread, and nothing bounded how big
+	 * one could be. Turning physics off made each block cheap, which fixed the
+	 * cost per block and left the count alone: a coordinate typed with one
+	 * extra digit is still billions of iterations, and the watchdog kills a
+	 * server that stops ticking. A million is a 100x100x100 cube, far more than
+	 * any example here builds in a single call.
+	 */
+	static final long MAX_FILL_BLOCKS = 1_000_000L;
+
+	/** The most powerful explosion createExplosion will make. TNT is 4. */
+	static final float MAX_EXPLOSION_POWER = 20f;
+
+	/** How many blocks a fill between two corners would write. */
+	static long fillVolume(Location pos1, Location pos2) {
+		long dx = Math.abs((long) pos1.getBlockX() - pos2.getBlockX()) + 1;
+		long dy = Math.abs((long) pos1.getBlockY() - pos2.getBlockY()) + 1;
+		long dz = Math.abs((long) pos1.getBlockZ() - pos2.getBlockZ()) + 1;
+		return dx * dy * dz;
 	}
 
 	// create a cuboid of lots of blocks
@@ -332,10 +379,19 @@ public class CmdWorld {
 		// anyway: filling a wall of sand should leave a wall of sand, not a
 		// pile. Single setBlock keeps physics, which is where a falling block
 		// or a flowing liquid is usually what somebody meant.
+		// Resolve the material ONCE. updateBlock upper-cases the name and
+		// calls Material.valueOf twice per block -- once to compare, once to
+		// set -- so a large fill spent millions of map lookups re-deriving a
+		// constant. It also means an unknown block name fails here, before a
+		// single block has been written, rather than part way through.
+		Material material = Material.valueOf(blockType.toUpperCase());
 		for (int x = minX; x <= maxX; ++x) {
 			for (int z = minZ; z <= maxZ; ++z) {
 				for (int y = minY; y <= maxY; ++y) {
-					updateBlock(world, x, y, z, blockType, false);
+					Block block = world.getBlockAt(x, y, z);
+					if (block.getType() != material) {
+						block.setType(material, false);
+					}
 				}
 			}
 		}
