@@ -133,6 +133,28 @@ public class CmdPlayer {
 	}
 
 	/**
+	 * A yaw as a compass bearing in [0, 360).
+	 *
+	 * Bukkit's yaw is unbounded: negative over half the compass, and it keeps
+	 * accumulating past 360 as a player spins on the spot. Callers want a
+	 * bearing, so it has to be wrapped.
+	 *
+	 * Wrapped, NOT negated. This used to be `if (yaw < 0) yaw = -yaw`, which is
+	 * a mirror rather than a rotation: -90 is EAST and came back as 90, which
+	 * is WEST. Every bearing in the eastern half of the compass was reflected
+	 * onto the western half, so anything built on it was exactly backwards for
+	 * half the compass and perfectly right for the other half.
+	 *
+	 * Bukkit's convention, for whoever needs it next: 0 is south (+Z), 90 is
+	 * west (-X), 180 is north (-Z), 270 is east (+X).
+	 */
+	public static float normalizeYaw(float yaw) {
+		if (Float.isNaN(yaw) || Float.isInfinite(yaw)) return 0f;
+		float wrapped = yaw % 360f;
+		return wrapped < 0f ? wrapped + 360f : wrapped;
+	}
+
+	/**
 	 * The entity id a player command was addressed to, or null when none was sent.
 	 *
 	 * args[0] counts as an id only when the command received exactly one more
@@ -264,10 +286,18 @@ public class CmdPlayer {
 			// player.getRotation
 		} else if (command.equals("getRotation")) {
 
-			float yaw = currentPlayer.getLocation().getYaw();
-			// turn bukkit's 0 - -360 to positive numbers
-			if (yaw < 0) yaw = yaw * -1;
-			session.send(yaw);
+			// Bukkit's yaw is unbounded: it is negative for half the compass
+			// and keeps accumulating past 360 as a player spins. Callers want
+			// a compass bearing, so wrap it into 0-360.
+			//
+			// This used to negate a negative yaw instead of wrapping it, which
+			// is a mirror rather than a rotation: -90 is EAST and came back as
+			// 90, which is WEST. Every bearing in the eastern half of the
+			// compass was reflected onto the western half, so anything built
+			// on it -- walking the way you are facing, say -- was exactly
+			// backwards half the time and perfectly correct the other half,
+			// which is the most confusing way for it to be wrong.
+			session.send(normalizeYaw(currentPlayer.getLocation().getYaw()));
 
 			// player.setPitch
 		} else if (command.equals("setPitch")) {

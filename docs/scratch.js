@@ -597,6 +597,13 @@ class FruitJuice {
                     }
             },
             {
+                    "opcode": "getRotation",
+                    "blockType": "reporter",
+                    "text": "player facing",
+                    "arguments": {
+                    }
+            },
+            {
                     "opcode": "getPlayerVector",
                     "blockType": "reporter",
                     "text": "player vector [mode] position",
