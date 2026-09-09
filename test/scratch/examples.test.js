@@ -199,7 +199,7 @@ files.forEach(function (f) {
 //
 // localhost is fine. "connect to my Minecraft" is better, because it uses
 // whatever that browser last connected to.
-const ALLOWED_HOSTS = ["localhost", "127.0.0.1", "example.org", "example.com"];
+const ALLOWED_HOSTS = ["localhost", "127.0.0.1"];
 files.forEach(function (f) {
     const raw = readFromZip(path.join(EXAMPLES, f), "project.json").toString("utf8");
     const project = JSON.parse(raw);
