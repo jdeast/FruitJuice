@@ -151,7 +151,8 @@ Payoff: high, and unlike anything else here.
 Arrow keys move the turtle in real time, with the pen down. An Etch A Sketch
 the size of a football pitch.
 
-Add `save turtle` / `restore turtle`, which already exist, and you have undo.
+Add `save turtle` / `restore turtle` and you have undo -- though see (9):
+they are written but commented out, so they are not in the palette today.
 Add a costume-per-block palette and you have a paint program whose canvas you
 can stand on.
 
@@ -184,6 +185,26 @@ microphone, getHit, your own idea -- with one line each on what is new in it,
 is probably worth more classroom time than any single new example.
 
 Effort: low. Payoff: high, and unglamorous.
+
+
+9. THE BLOCKS THAT ARE ALREADY WRITTEN AND SWITCHED OFF
+-------------------------------------------------------
+Six /* */ comments in scratch.js hide eighteen block definitions. The methods
+behind them are still there, so these are decisions somebody made and did not
+write down, and at least one of them was made because the code was broken:
+getHit called `this.shift.pop()`, where the array is named `hits` and `shift`
+is a function, so it threw every time a hit arrived.
+
+Switched off today: saveTurtle, restoreTurtle, suspend, resume, haveBlock,
+onBlock, movePlayerTop, and one of the two spawnEntity variants.
+
+Each wants five minutes: try it, and either fix it and uncomment it or delete
+it and say why. A commented out block is worse than a missing one, because the
+next person to read the file believes it exists. (The eleven blocks added in
+this round were themselves first anchored on `suspend` and vanished into its
+comment, which is how the whole thing came to light.)
+
+Effort: low. Payoff: medium, and it stops the file lying about itself.
 
 
 NOTES

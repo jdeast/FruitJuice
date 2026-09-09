@@ -558,13 +558,13 @@ class FruitJuice {
                         },
                     }
             },
-/*            {
+            {
                     "opcode": "getHit",
                     "blockType": "reporter",
                     "text": "sword hit vector position",
                     "arguments": {
                     }
-            },            */
+            },
             {
                     "opcode": "extractFromVector",
                     "blockType": "reporter",
@@ -958,20 +958,6 @@ class FruitJuice {
                         },
                     }
             },            
-/*            {
-                    "opcode": "saveTurtle",
-                    "blockType": "command",
-                    "text": "turtle save",
-                    "arguments": {
-                    }
-            },            
-            {
-                    "opcode": "restoreTurtle",
-                    "blockType": "command",
-                    "text": "turtle restore",
-                    "arguments": {
-                    }
-            },            
             {
                     "opcode": "fill",
                     "blockType": "command",
@@ -1076,6 +1062,20 @@ class FruitJuice {
                         "stay": {"type": "number", "defaultValue": 60},
                     }
             },
+/*            {
+                    "opcode": "saveTurtle",
+                    "blockType": "command",
+                    "text": "turtle save",
+                    "arguments": {
+                    }
+            },            
+            {
+                    "opcode": "restoreTurtle",
+                    "blockType": "command",
+                    "text": "turtle restore",
+                    "arguments": {
+                    }
+            },            
             {
                     "opcode": "suspend",
                     "blockType": "command",
@@ -1726,7 +1726,16 @@ class FruitJuice {
                     for(var i=0;i<hits.length;i++)
                         rjm.hits.push(hits[i].split(",").map(parseFloat));
                 }
-                return ""+this.shift.pop().slice(0,3);
+                // `this.shift` was never a thing -- the array is `hits`,
+                // and reading a property off a function then calling .pop()
+                // on undefined threw every time a hit arrived. Which is,
+                // almost certainly, why the block above spent years commented
+                // out: it did not work, so it was hidden rather than fixed.
+                //
+                // shift() and not pop(), to match the branch at the top: hits
+                // come back oldest first and should be handed out in that
+                // order, or a flurry of them plays backwards.
+                return rjm.hits.length > 0 ? ""+rjm.hits.shift().slice(0,3) : "";
             });
     };
 

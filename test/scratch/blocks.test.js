@@ -47,13 +47,31 @@ function all(re, s, group) {
 
 // ── every block reaches a method ───────────────────────────────────────────
 
-const opcodes = all(/"opcode":\s*"(\w+)"/, src);
+// Comments first. A block definition inside /* */ is not in the palette, and
+// counting it means the checks below cheerfully confirm that a block nobody
+// can reach has an implementation -- which is exactly what happened to getHit.
+const code = src.replace(/\/\*[\s\S]*?\*\//g, "");
+
+const opcodes = all(/"opcode":\s*"(\w+)"/, code);
 const methods = all(/^ {4}(\w+)\s*\([^)]*\)\s*\{/m, src);
 const methodSet = new Set(methods);
 const orphans = opcodes.filter(function (o) { return !methodSet.has(o); });
 
 ok("every block has an implementation", orphans.length === 0, orphans.join(" "));
-ok("there are blocks at all", opcodes.length > 40, String(opcodes.length));
+// The palette is smaller than the file looks: six block comments hide
+// eighteen definitions, including saveTurtle, restoreTurtle, suspend, resume,
+// haveBlock, onBlock and movePlayerTop. Only the live ones count.
+ok("there are blocks at all", opcodes.length >= 35, String(opcodes.length));
+
+// Everything a block claims must be reachable, so no new block may be added
+// inside one of those comments -- which is exactly what happened when these
+// eleven were first anchored on "suspend", a block that is itself commented
+// out. All eleven went into the palette's dead zone and none of them appeared.
+["fill", "sign", "explode", "removeEntity", "pointPlayer", "worldList",
+ "currentWorld", "switchWorld", "setHealth", "setFood", "showTitle", "getHit"
+].forEach(function (o) {
+    ok("the " + o + " block is live, not commented out", opcodes.indexOf(o) >= 0);
+});
 
 // ── every menu a block names is defined ────────────────────────────────────
 
@@ -85,7 +103,8 @@ const serverCommands = new Set();
     const java = fs.readFileSync(p, "utf8");
     const prefix = /preFix\s*=\s*"(\w+\.)"/.exec(java);
     if (!prefix) return;
-    all(/command\.equals\("(\w+)"\)/, java).forEach(function (c) {
+    // Some are dotted: events.block.hits is command.equals("block.hits").
+    all(/command\.equals\("([\w.]+)"\)/, java).forEach(function (c) {
         serverCommands.add(prefix[1] + c);
     });
 });
@@ -98,7 +117,7 @@ const live = src.split("\n").filter(function (l) {
     return l.trim().indexOf("//") !== 0;
 }).join("\n");
 
-const sent = new Set(all(/"((?:world|player|entity)\.\w+)\(/, live));
+const sent = new Set(all(/"((?:world|player|entity|events)\.[\w.]+)\(/, live));
 const unknown = Array.from(sent).filter(function (c) {
     return !serverCommands.has(c);
 });
@@ -125,6 +144,7 @@ const wanted = {
     "player.setHealth": "health",
     "player.setFoodLevel": "food",
     "player.sendTitle": "titles on screen",
+    "events.block.hits": "find out what the player hit",
 };
 Object.keys(wanted).forEach(function (c) {
     ok("sends " + c + " (" + wanted[c] + ")", sent.has(c));
@@ -133,7 +153,7 @@ Object.keys(wanted).forEach(function (c) {
 // setBlocks is the one that changes what is possible rather than what is
 // available: 500 blocks in one message rather than 500 messages.
 ok("the fill block exists and uses setBlocks",
-   opcodes.indexOf("fill") >= 0 && /fill\s*\(\{[^}]*\}\)\s*\{[\s\S]*?world\.setBlocks/.test(src));
+   opcodes.indexOf("fill") >= 0 && /fill\s*\(\{[^}]*\}\)\s*\{[\s\S]*?world\.setBlocks/.test(code));
 
 console.log("");
 if (failures) {

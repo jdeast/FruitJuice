@@ -105,6 +105,18 @@ jobs:
       - name: Block palette and command coverage
         run: node test/scratch/blocks.test.js
 
+      # An .sb3 is an opaque zip. Remove a block from the extension and eight
+      # example projects silently stop loading; the child just gets an editor
+      # full of grey blocks and no error anywhere.
+      - name: Example projects still load
+        run: node test/scratch/examples.test.js
+
+      # The projects are generated, so they must match their source.
+      - name: Generated examples are up to date
+        run: |
+          python scratch/tools/make_examples.py
+          git diff --exit-code --stat scratch/examples ||             (echo "make_examples.py output differs from what is committed" && exit 1)
+
   # Builds against a NEWER Minecraft API than the one pinned in the pom.
   #
   # The pinned dependency verifies what we ship. It does not verify that the
