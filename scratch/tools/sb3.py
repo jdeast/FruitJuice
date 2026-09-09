@@ -428,4 +428,9 @@ class Project(object):
         info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
         info.compress_type = zipfile.ZIP_DEFLATED
         info.external_attr = 0o600 << 16
+        # ZipInfo takes this from the platform -- 0 on Windows, 3 elsewhere --
+        # so the same project written on a laptop and in CI differs by one byte
+        # per entry at identical length, which is a maddening way to find out
+        # that "reproducible" meant "on this machine".
+        info.create_system = 0
         out.writestr(info, data)

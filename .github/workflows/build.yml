@@ -111,11 +111,12 @@ jobs:
       - name: Example projects still load
         run: node test/scratch/examples.test.js
 
-      # The projects are generated, so they must match their source.
+      # The projects are generated, so they must match their source. This
+      # compares the block graph inside each file rather than the zip bytes:
+      # zip encoding varies with the platform and the zlib build, and none of
+      # that says anything about whether the blocks changed.
       - name: Generated examples are up to date
-        run: |
-          python scratch/tools/make_examples.py
-          git diff --exit-code --stat scratch/examples ||             (echo "make_examples.py output differs from what is committed" && exit 1)
+        run: python scratch/tools/make_examples.py --check
 
   # Builds against a NEWER Minecraft API than the one pinned in the pom.
   #

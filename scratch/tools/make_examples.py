@@ -223,17 +223,47 @@ def piano():
     return p, "piano.sb3"
 
 
-def main():
-    made = []
+def main(check_only=False):
+    """Write the projects, or with --check say whether they are current.
+
+    --check compares the project.json inside each file, not the zip bytes. Zip
+    encoding varies with the platform and the zlib build and none of that says
+    anything about whether the blocks changed; the block graph is the thing
+    worth holding still.
+    """
+    import json
+    import zipfile
+
+    stale = []
     for fn in (microphone_tower, be_the_controller, piano):
         p, name = fn()
-        path = p.save(os.path.join(OUT, name))
-        size = os.path.getsize(path)
-        blocks = len(p.build()["targets"][1]["blocks"])
-        made.append((name, blocks, size))
-        print("wrote %-26s %3d blocks, %d bytes" % (name, blocks, size))
-    return made
+        target = os.path.join(OUT, name)
+        built = p.build()
+        blocks = len(built["targets"][1]["blocks"])
+        if check_only:
+            fresh = json.dumps(built, sort_keys=True)
+            try:
+                with zipfile.ZipFile(target) as z:
+                    have = json.dumps(json.loads(z.read("project.json")),
+                                      sort_keys=True)
+            except Exception:
+                have = None
+            same = have == fresh
+            if not same:
+                stale.append(name)
+            print("%-26s %3d blocks  %s"
+                  % (name, blocks, "up to date" if same else "STALE"))
+        else:
+            path = p.save(target)
+            print("wrote %-26s %3d blocks, %d bytes"
+                  % (name, blocks, os.path.getsize(path)))
+
+    if check_only and stale:
+        print("")
+        print("These differ from make_examples.py: " + ", ".join(stale))
+        print("Run: python scratch/tools/make_examples.py")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
-    main()
+    main(check_only="--check" in sys.argv)
