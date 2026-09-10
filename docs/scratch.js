@@ -496,12 +496,22 @@ class FruitJuice {
 		{
                     "opcode": "blockByName",
                     "blockType": "reporter",
-                    "text": "block id of [name]",
+                    "text": "block named [name]",
                     "arguments": {
+			// Typed, NOT a dropdown. Every other block argument is a menu,
+			// which is friendly until you want the one block the menu does
+			// not list, or you want to work the name out while the project
+			// runs -- from "ask and wait", or by joining a colour onto
+			// "_wool". Those all work anywhere a block is expected, because
+			// blockMenu accepts reporters, but a dropdown gives no hint of
+			// it. This block is the hint.
+			//
+			// resolveBlock upper-cases and turns spaces into underscores, so
+			// "pink wool" is PINK_WOOL. A number or a menu label such as
+			// "Red Concrete (178)" still works too.
 			"name": {
                             "type": "string",
-                            "defaultValue": "Stone (0)",
-                            "menu": "blockMenu"
+                            "defaultValue": "pink wool"
 			}
                     }
 		},            

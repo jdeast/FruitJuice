@@ -127,6 +127,35 @@ async function main() {
           (await got).indexOf("Fail,") === 0 && alerts.length === 0,
           JSON.stringify(alerts));
 
+    // ── a typed block name ─────────────────────────────────────────────────
+    // "block named [text]" is the one block argument that is typed rather than
+    // chosen, so it is also the one where a spelling mistake is likely. Both
+    // halves matter: a name typed the way a person would write it has to work,
+    // and one that is wrong has to say so.
+    f = session();
+    f.serverBlocks = ["STONE", "PINK_WOOL", "WHITE_CONCRETE"];
+    check("a name typed like a person writes it resolves",
+          f.blockByName({ name: "pink wool" }) === "PINK_WOOL");
+    check("case does not matter", f.blockByName({ name: "Pink Wool" }) === "PINK_WOOL");
+    check("an already-canonical name is unchanged",
+          f.blockByName({ name: "WHITE_CONCRETE" }) === "WHITE_CONCRETE");
+
+    // The menu-label form still works, so anything built before this block
+    // took typed text keeps working.
+    f = session();
+    f.serverBlocks = ["STONE"];
+    check("a dropdown label still resolves to its material",
+          f.blockByName({ name: "Stone (0)" }) === "STONE" ||
+          f.blockByName({ name: "STONE" }) === "STONE");
+
+    alerts.length = 0;
+    f = session();
+    f.serverBlocks = ["STONE", "PINK_WOOL"];
+    f.blockByName({ name: "pink wol" });
+    check("a misspelled typed name is reported rather than passed on silently",
+          alerts.length === 1 && alerts[0].indexOf("pink wol") >= 0,
+          JSON.stringify(alerts));
+
     console.log("");
     if (failures) {
         console.log(failures + " failed");
