@@ -4,17 +4,31 @@ How to set up a Python and scratch enabled, Java+Bedrock server that allows remo
 
 Running custom servers is fragile because nothing is officially supported. Many components (written by passionate volunteers) have bugs that impact performance or behaviors you might be used to with the offical game. When Minecraft updates, sometimes that breaks the various plugins. It's best to wait a week or two after major updates for fixes and bugs to work their way through.
 
-These instructions were working as of 2025-03-14 with the latest versions of minecraft and all plugins on a Rasbperry Pi 4 Model B with 4 GB with a Raspbian Lite 32 bit OS. There is nothing particularly special about the Raspberry Pi -- many inexpensive "single board computers" will work (as well as standard computers). The better the computer, the more complex worlds you can host, the more people can play, or the more simultaneous servers you can support.
+These instructions were working as of 2026-11-08 with the latest versions of minecraft and all plugins on a Raspberry Pi 4 Model B with 4 GB running 64-bit Raspberry Pi OS Lite, Debian 12 (bookworm). There is nothing particularly special about the Raspberry Pi -- many inexpensive "single board computers" will work (as well as standard computers). The better the computer, the more complex worlds you can host, the more people can play, or the more simultaneous servers you can support.
 
 If practical, you may wish to disable minecraft updates for all users after setting this up to avoid unexpected incompatibilities. Most major minecraft updates require corresponding plugin updates.
 
-Minecraft Java 1.21
-Minecraft Bedrock 1.21
+Minecraft Java 26.3
+Minecraft Bedrock 26.x
 
-Paper 1.21.4 #211
-Geyser-Spigot #567
-Floodgate-Spigot #109
-FruitJuice-0.3.0
+Java 25 (Temurin)
+Paper 26.3 #200
+Geyser-Spigot 2.12.1 #1295
+Floodgate-Spigot #141
+FruitJuice-0.5.4
+
+## Operating system requirements for Bedrock players
+
+Since 2026-10-27, Bedrock Edition connects to servers with a new protocol called NetherNet, replacing the old one (RakNet). Geyser supports it, but only on an operating system with glibc 2.34 or newer and OpenSSL 3: Debian 12 (bookworm) or newer, Raspberry Pi OS based on bookworm, Ubuntu 22.04 or newer. **Debian 11 (bullseye) cannot run it**, and installing OpenSSL 3 alone does not fix that, because glibc is too old as well. On bullseye the server still starts and Java players are unaffected, but every Bedrock player gets a generic connection error ("Search help.minecraft.net for Terracotta"), and nothing shows up in the server log because they never reach it.
+
+Check with:
+
+```
+ldd --version | head -1     # needs 2.34 or higher
+cat /etc/os-release | head -1
+```
+
+If you are on bullseye, either reinstall with a current Raspberry Pi OS image (simplest), or upgrade in place as described in "Upgrading a bullseye Pi to bookworm" at the end of the server section.
 
 # Intro
 
@@ -42,21 +56,27 @@ Note: updates to servers/plugins may require stopping your server, repeating ste
 java -version
 ```
 
-If this is not 21 or higher, you need to update java. 
+If this is not 25 or higher, you need to update java. Minecraft 26.1 and newer requires Java 25; with anything older, Paper prints "Minecraft 26.1 and newer requires running the server with Java 25 or above" and exits.
 
 See here for more general directions: https://docs.papermc.io/misc/java-install
 
-On the Raspberry Pi, the default repo isn’t good enough. This will install jdk-21 from zulu (thanks https://pimylifeup.com/raspberry-pi-java/, modified to use non-headless as recommended by paper)
+On the Raspberry Pi, the default repo isnâ€™t good enough. This installs JDK 25 from Adoptium (Temurin):
 
 ```
 sudo apt update
 sudo apt upgrade
 sudo apt install curl gnupg ca-certificates
-curl -s https://repos.azul.com/azul-repo.key | sudo gpg --dearmor -o /usr/share/keyrings/azul.gpg
-echo "deb [arch=arm64 signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" | sudo tee /etc/apt/sources.list.d/zulu.list
+curl -s https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo gpg --dearmor -o /usr/share/keyrings/adoptium.gpg
+echo "deb [signed-by=/usr/share/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(. /etc/os-release && echo $VERSION_CODENAME) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
 sudo apt update
-sudo apt install zulu21-jdk
+sudo apt install temurin-25-jdk
+```
 
+If more than one Java is installed (older versions of these instructions installed `zulu21-jdk`), `java` may not be the one you just installed, and a system upgrade can silently switch it. Pin it:
+
+```
+sudo update-alternatives --config java    # pick the 25 one
+java -version
 ```
 
 2. Download the official Minecraft server: 
@@ -76,7 +96,7 @@ mv ~/Downloads/*.jar .
 5. Inside a terminal within your minecraft-server directory, run the paper server:
 
 ```
-java -Xmx2048M -Xms2048M -jar paper-1.21.4.jar
+java -Xmx2048M -Xms2048M -jar paper-26.3-200.jar
 ```
 
 You may need to adjust the name of the jar file to match the version you downloaded
@@ -96,6 +116,30 @@ https://ci.opencollab.dev/job/GeyserMC/job/Geyser/job/master/
 	- Download the floodgate-spigot.jar plugin:
 https://ci.opencollab.dev/job/GeyserMC/job/Floodgate/job/master/
 
+After the first start (step 11), turn on NetherNet in `plugins/Geyser-Spigot/config.yml`. Geyser still defaults to the old RakNet protocol, which current Bedrock clients no longer use (see "Operating system requirements for Bedrock players" above). In the `bedrock:` section:
+
+```
+  port: 19132
+  webrtc-port: 19133        # NetherNet gameplay (UDP); must differ from port when transport is "both"
+  transport: both           # NetherNet for current clients, RakNet for any not yet updated
+  signaling:
+    mode: builtin           # players find the server over TCP on "port" above
+    builtin:
+      advertise-addresses: ["YOUR.EXTERNAL.IP", "192.168.1.XXX"]
+```
+
+`advertise-addresses` is the address Geyser tells each player to send game traffic to. Left empty, it hands out the server's own addresses, which behind a home router means a 192.168.x.x address that is unreachable from outside. List your external IP (`curl ipinfo.io/ip`) for WAN players and the internal IP for LAN players. If your ISP changes your external IP, this has to be updated too.
+
+Restart and check the log. You want:
+
+```
+[Geyser-Spigot] Built-in signaling started on http://0.0.0.0:19132, with NetherNet on UDP port 19133
+```
+
+and NOT `NetherNet will not start! Could not load its WebRTC native library`, which means the operating system is too old (Debian 11 or earlier).
+
+Bedrock players will see a "Trust on First Use?" prompt on their first join, because signaling is served over plain http. That is harmless. To get rid of it, point `signaling.builtin.https.certificate` and `private-key` at the same certificate as step 16, keeping in mind the permissions problem described in step 16(c) applies to Geyser too.
+
 9. You can skip this step if you just want a multi-player server (no scratch or python).
 
 Download FruitJuice plugin:
@@ -110,14 +154,24 @@ mv ~/Downloads/*.jar ~/minecraft-server/plugins/
 11. Restart the paper server
 
 ```
-java -Xmx2048M -Xms2048M -jar paper-1.20-17.jar
+java -Xmx2048M -Xms2048M -jar paper-26.3-200.jar
 ```
 
 12. You can kill the server, edit ~/minecraft-server/plugins/*/config.yml files, and restart again to change the settings for the plugins, if desired.
 
 13. You can skip this step if you're only connecting locally (from computers all connected to the same router), and not with scratch.
 
-On your router, forward ports 19132 (bedrock), 25565 (java), 4711 (python) and 14711 (scratch) to the same ports on your server (or different port numbers if you've changed the defaults).
+On your router, forward these to the same ports on your server (or different port numbers if you've changed the defaults):
+
+| Port | Protocol | For |
+|---|---|---|
+| 25565 | TCP | Java edition |
+| 19132 | **TCP and UDP** | Bedrock: TCP for NetherNet signaling (finding the server), UDP for older RakNet clients |
+| 19133 | UDP | Bedrock: NetherNet gameplay (Geyser's `webrtc-port`) |
+| 14711 | TCP | scratch |
+| 4711 | TCP | python (see the security note below) |
+
+Before NetherNet, forwarding 19132 as UDP only was enough. It no longer is: without the TCP forward Bedrock players cannot find the server, and without 19133/UDP they find it but cannot play.
 
 Ports 80 (http) and 443 (https) are only needed if you generate your SSL certificate with certbot's `--standalone` mode (step 16, Option 2b). If you use the DNS challenge instead, you never need to open them.
 
@@ -284,6 +338,33 @@ Alternatively you can set up cron jobs to start and stop things at certain times
 
 18. Once you have it all set up, you can make other servers easily by copying the minecraft-server folder, and deleting the new "world*" directories, editing the config files, and regenerating the SSL certificates. If your server is powerful enough, you can run multiple simultaneous servers by changing the ports (and adding more port forwards), or you can manually start different worlds with different settings. I strongly recommend a separate, flat, creative world for scratch/python, as it's easy for mistakes to do a lot of damage.
 
+## Upgrading a bullseye Pi to bookworm
+
+Only needed if your Pi runs Debian 11 (bullseye) and you want Bedrock players (see "Operating system requirements for Bedrock players"). Raspberry Pi does not officially support upgrading in place and recommends a fresh image instead; in-place does work, but if the Pi fails to boot afterwards, fixing it needs someone physically at it. Back up your worlds, `/etc`, and your crontab to another machine first.
+
+Stop the minecraft server, then:
+
+```
+# bullseye is past end of life, and its security archive has been removed, so
+# "update bullseye fully first" now fails with 404s. Go straight across.
+sudo sed -i 's/bullseye/bookworm/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.list
+sudo sed -i '/^deb .*debian/ s/ non-free$/ non-free non-free-firmware/' /etc/apt/sources.list
+sudo apt update
+
+# bullseye's dpkg cannot unpack Raspberry Pi's bookworm packages (they use zstd
+# compression: "unknown compression for member 'control.tar.zst'"). Upgrade
+# dpkg itself before anything else.
+sudo apt install dpkg
+
+sudo apt upgrade --without-new-pkgs
+sudo apt full-upgrade
+sudo apt autoremove
+```
+
+Run it somewhere that survives a dropped ssh connection (`screen`, `tmux`, or `nohup`), since it takes 30-60 minutes. Keep your existing config files when asked.
+
+Before rebooting, if the Pi is on Wi-Fi only, check that networking will come back: an upgraded system keeps `dhcpcd` and `wpa_supplicant` (a fresh bookworm image uses NetworkManager instead), so `systemctl is-enabled dhcpcd wpa_supplicant` should say `enabled` twice. Then reboot, and check Java again (step 1): the upgrade can switch `java` to a different installed version, and Paper will refuse to start.
+
 ## Windows
 
 See here:
@@ -326,7 +407,9 @@ services:
 
     ports:
       - "25565:25565"        # java edition gameplay
-      - "19132:19132/udp"    # bedrock edition, via geyser
+      - "19132:19132/udp"    # bedrock edition, via geyser (older RakNet clients)
+      - "19132:19132/tcp"    # bedrock NetherNet signaling
+      - "19133:19133/udp"    # bedrock NetherNet gameplay (geyser's webrtc-port)
       - "4711:4711"          # FruitJuice, for python and for websockify
       - "25575:25575"        # rcon, optional; must match RCON_PORT below
 
@@ -379,7 +462,7 @@ The first run downloads the image and builds the world, so it takes a while. Wat
 
 To stop it, press control-C in that terminal, which kicks off anyone playing. If you started it with `-d`, use `docker compose down` from the same folder instead.
 
-7. Connect from Minecraft as usual. Use `localhost:25565` if you are playing on the same computer that is running Docker, or the host computer's IP address if not. Bedrock players use port 19132.
+7. Connect from Minecraft as usual. Use `localhost:25565` if you are playing on the same computer that is running Docker, or the host computer's IP address if not. Bedrock players use port 19132, but only after you turn on NetherNet: after the first start, edit `data/plugins/Geyser-Spigot/config.yml` as described in step 8 of the Mac/Linux instructions and restart. The container brings its own operating system, so the Debian version requirement does not apply here.
 
 SECURITY NOTE: the same warning as step 13 applies, and more so. Port 4711 has no authentication of any kind, and RCON has one password between a stranger and total control of your server. Do not forward either of them from your router unless you have thought hard about it.
 
@@ -401,11 +484,13 @@ https://www.minecraft.net/en-us/download
 		- Select "servers" tab
 		- Click "add server"
 		- Enter whatever you like for "Server name"
-		- Enter the server’s IP for "Server address"
+		- Enter the serverâ€™s IP for "Server address"
 			- For WAN connections, this should be the external IP
 			- For LAN connections, this should be the internal IP
 		- Enter 19132 for the port
 		- Click "Join server"
+		- The first time you join, accept the "Trust on First Use?" prompt
+		- "An error has occurred ... Search help.minecraft.net for Terracotta" means the client never reached the server. Usually the server's Geyser is not set up for NetherNet, or ports 19132/TCP and 19133/UDP are not forwarded. See server steps 8 and 13.
 
 # Python
 
@@ -413,7 +498,7 @@ https://www.minecraft.net/en-us/download
 
 https://www.python.org/downloads/
 
-During the installation, be sure to check the box to update your path to include python and pip, or you’ll get "command not found" errors in the next steps
+During the installation, be sure to check the box to update your path to include python and pip, or youâ€™ll get "command not found" errors in the next steps
 
 2. Install [pyncraft](https://github.com/jdeast/pyncraft). In a terminal, type
 
