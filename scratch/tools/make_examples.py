@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Write the three sensor examples into scratch/examples.
+"""Write the generated examples into scratch/examples.
 
     python scratch/tools/make_examples.py
 
-These are the ones the todo argues for: things that happen in the room turning
+The first three are the ones the todo argues for: things that happen in the room turning
 into things that happen in the world, and in the piano's case the other way
 round. None of them is turtle geometry, because Python does turtle geometry
-just as well and Scratch has a microphone and Python does not.
+just as well and Scratch has a microphone and Python does not. The last two
+are working versions of explorations that never got finished: hopping across a
+new map, and laying out every block by its number.
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -16,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sb3 import (Project, fj, menu, block, when_flag, forever, repeat, if_then,
                  if_else, wait, set_var, change_var, add, sub, mul, div, gt, lt,
                  equals, mathop, join, loudness, video_on, video_toggle,
-                 play_note, set_instrument, item_of)
+                 play_note, set_instrument, item_of, Obscured)
 
 
 # getPlayerX/Y/Z take their mode from a dropdown, not as a plain number: 0 is
@@ -413,6 +416,251 @@ def piano():
     return p, "piano.sb3"
 
 
+# ── 4. explore a map ───────────────────────────────────────────────────────
+
+def explore_map():
+    """Hop across a new world in a grid, landing on the surface each time.
+
+    This replaces explore_not_working.sb3, which tried to find the surface by
+    climbing: start at y=-10 and ask for one block at a time until there was
+    air above and ground below. Three things sank it. It never moved the player
+    inside the loop, so it searched columns nobody was standing in; the climb
+    was dozens of round trips per stop; and the "air" it compared against came
+    from a dropdown whose saved value had decayed into "0,0".
+
+    `move player to top` does the whole search in one request on the server
+    (world.getHeight, which is Minecraft's own idea of the surface), so each
+    stop is a teleport, one question, and a pause long enough for the game to
+    draw the new chunks around you.
+    """
+    p = Project(sprite_name="Explorer")
+    across, spacing, pause = p.var("across", 5), p.var("spacing", 128), p.var("pause", 3)
+    i, j = p.var("i"), p.var("j")
+    x0, y0, z0 = p.var("x0"), p.var("y0"), p.var("z0")
+    x, z, ground = p.var("x"), p.var("z"), p.var("ground")
+
+    p.watch(x, 5, 5)
+    p.watch(z, 5, 32)
+    p.watch(ground, 5, 59)
+
+    p.note("EXPLORE A MAP." + chr(10) + chr(10) +
+           "Hops you across the world in a grid, centred on wherever you "
+           "start," + chr(10) +
+           "and lands you on the surface each time, so you see a new world "
+           "fast." + chr(10) +
+           "It says in chat what you are standing on -- sand, snow, water -- "
+           "and" + chr(10) +
+           "brings you back where you started at the end." + chr(10) + chr(10) +
+           "  across   how many stops along each side. 5 means 5 x 5 = 25 "
+           "stops." + chr(10) +
+           "  spacing  blocks between stops. 128 is about eight chunks." +
+           chr(10) +
+           "  pause    seconds at each stop, so the game can draw the "
+           "chunks." + chr(10) + chr(10) +
+           "THE GROUND: `move player to top` asks the server for the highest "
+           "block" + chr(10) +
+           "in that column, which is the top of a tree in a forest and the "
+           "top of" + chr(10) +
+           "the water at sea. Survival players keep their health; a creative "
+           "world" + chr(10) +
+           "is the comfortable way to sightsee." + chr(10) + chr(10) +
+           "Try: across 9 with spacing 256 covers a map 2000 blocks wide. "
+           "Every" + chr(10) +
+           "stop makes the server build new land, so expect it to take a "
+           "while." + HOW_TO_SET_THE_SERVER)
+
+    # Where stop number k sits: the middle stop is where you started.
+    def offset(k):
+        return mul(sub(k, mathop("floor", div(across, 2))), spacing)
+
+    p.script(
+        when_flag(),
+        *connect("Exploring! Back soon."),
+        # The EXACT position, not the block: a teleport to a whole number lands
+        # on the corner where four columns meet, half inside whichever is
+        # tallest. Keeping the start's fraction keeps every hop off the corners.
+        set_var(x0, fj("getPlayerX", mode=menu("modeMenu", 1))),
+        set_var(y0, fj("getPlayerY", mode=menu("modeMenu", 1))),
+        set_var(z0, fj("getPlayerZ", mode=menu("modeMenu", 1))),
+        set_var(j, 0),
+        repeat(across,
+               set_var(i, 0),
+               repeat(across,
+                      set_var(x, add(x0, offset(i))),
+                      set_var(z, add(z0, offset(j))),
+                      fj("setPlayerPos", x=x, y=y0, z=z),
+                      fj("movePlayerTop"),
+                      # One below your feet is what you landed on.
+                      set_var(ground, fj("getBlock", x=player_x(),
+                                         y=sub(player_y(), 1), z=player_z())),
+                      fj("chat", msg=join(join(mathop("floor", x), ", "),
+                                          join(mathop("floor", z),
+                                               join(": ", ground)))),
+                      wait(pause),
+                      change_var(i, 1)),
+               change_var(j, 1)),
+        fj("setPlayerPos", x=x0, y=y0, z=z0),
+        fj("chat", msg="Home again."),
+    )
+    return p, "explore a map.sb3"
+
+
+# ── 5. every block, by number ──────────────────────────────────────────────
+
+# Block numbers 0 to 665 are all placeable blocks. From 666 (SADDLE) the list
+# in scratch.js turns into items -- boats, spawn eggs, tools -- which a world
+# cannot hold, and each one would raise its own "Minecraft could not do that"
+# alert. The list is append-only, so these two never move; the check is here so
+# that if they somehow did, regenerating says so instead of shipping a
+# catalogue that runs into a wall of alerts.
+LAST_BLOCK = 665
+
+
+def _check_last_block():
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "..", "docs", "scratch.js")
+    with open(path, encoding="utf-8") as f:
+        src = f.read()
+    names = re.findall(r'"([A-Z0-9_]+)"',
+                       src.split("const FRUITJUICE_BLOCKS = [", 1)[1].split("];", 1)[0])
+    if names[LAST_BLOCK] != "ACTIVATOR_RAIL" or names[LAST_BLOCK + 1] != "SADDLE":
+        raise SystemExit("FRUITJUICE_BLOCKS moved: block %d is now %s"
+                         % (LAST_BLOCK, names[LAST_BLOCK]))
+
+
+def block_catalogue():
+    """Lay out every block by its number, then name any one you hit.
+
+    This replaces test_blockids_not_working.sb3. Block numbers are positions in
+    FRUITJUICE_BLOCKS and are now fixed for good -- the list only grows at the
+    end -- and `block named` turns a number into a name the same way the put
+    block does, so a number, a name and a menu label all agree.
+
+    Each block is read straight back with `block id at` and compared with the
+    name its number stands for. A mismatch is reported in chat, which makes
+    this a test of the numbering as much as a picture of it.
+    """
+    _check_last_block()
+    p = Project(sprite_name="Catalogue")
+    first, last = p.var("first", 0), p.var("last", LAST_BLOCK)
+    n, name, got = p.var("number"), p.var("name"), p.var("read back")
+    wrong = p.var("mismatches")
+    x0, y0, z0 = p.var("x0"), p.var("y0"), p.var("z0")
+    x, z, hit = p.var("x"), p.var("z"), p.var("hit")
+    col, row, end = p.var("column"), p.var("row"), p.var("row ends")
+
+    p.watch(n, 5, 5)
+    p.watch(name, 5, 32)
+    p.watch(wrong, 5, 59)
+
+    p.note("EVERY BLOCK, BY NUMBER." + chr(10) + chr(10) +
+           "Every block has a number, and `block named` turns a number into "
+           "its" + chr(10) +
+           "name: 0 is STONE, 1 is GRANITE, and so on. This lays them out in "
+           "rows" + chr(10) +
+           "of 32 in front of you, with a sign at the start of each row." +
+           chr(10) + chr(10) +
+           "Then HIT ANY BLOCK WITH A SWORD and its number and name come up "
+           "on" + chr(10) +
+           "your screen. That is the fastest way to find the number you want." +
+           chr(10) + chr(10) +
+           "Each block is also read back as it is placed. If what comes back "
+           "is" + chr(10) +
+           "not what was put down, chat says so and `mismatches` counts it." +
+           chr(10) + chr(10) +
+           "  first, last  which numbers to lay out. 0 to " + str(LAST_BLOCK) +
+           " is every" + chr(10) +
+           "               real block. Numbers after that are mostly items "
+           "--" + chr(10) +
+           "               boats, spawn eggs -- which cannot be placed." +
+           chr(10) + chr(10) +
+           "It clears a patch about 70 by 70 blocks to build on. Do it "
+           "somewhere" + chr(10) +
+           "flat and empty, or a creative world." + HOW_TO_SET_THE_SERVER)
+
+    rows = add(mathop("floor", div(last, 32)), 1)
+
+    p.script(
+        when_flag(),
+        *connect("Laying out every block. Hit one with a sword to name it."),
+        set_var(x0, add(player_x(), 3)),
+        set_var(y0, sub(player_y(), 1)),
+        set_var(z0, player_z()),
+        set_var(wrong, 0),
+        # Clear the space, then lay a floor. Two fills, not thousands of puts.
+        fj("fill", x1=sub(x0, 2), y1=add(y0, 1), z1=sub(z0, 2),
+           x2=add(x0, 63), y2=add(y0, 3), z2=add(z0, mul(rows, 3)),
+           b=menu("blockMenu", "AIR")),
+        fj("fill", x1=sub(x0, 2), y1=y0, z1=sub(z0, 2),
+           x2=add(x0, 63), y2=y0, z2=add(z0, mul(rows, 3)),
+           b=menu("blockMenu", "SMOOTH_STONE")),
+        set_var(n, first),
+        repeat(add(sub(last, first), 1),
+               # Two apart along a row, three between rows: room for beds and
+               # doors, which take up two blocks.
+               set_var(x, add(x0, mul(block("operator_mod", NUM1=n, NUM2=32), 2))),
+               set_var(z, add(z0, mul(mathop("floor", div(n, 32)), 3))),
+               set_var(name, fj("blockByName", name=n)),
+               # scratch.js defines setBlock five times under one opcode and
+               # the editor draws the last, which has a facing. Leaving it out
+               # shows an empty dropdown; "(default)" says what it does.
+               fj("setBlock", x=x, y=add(y0, 1), z=z,
+                  b=Obscured(fj("blockByName", name=n),
+                             menu("blockMenu", "STONE")),
+                  dir=menu("dirMenu", "(default)")),
+               set_var(got, fj("getBlock", x=x, y=add(y0, 1), z=z)),
+               if_then(block("operator_not", OPERAND=equals(got, name)),
+                       change_var(wrong, 1),
+                       fj("chat", msg=join(join("Block ", n),
+                                           join(" should be ",
+                                                join(name, join(" but is ", got)))))),
+               if_then(block("operator_or",
+                             OPERAND1=equals(block("operator_mod", NUM1=n, NUM2=32), 0),
+                             OPERAND2=equals(n, first)),
+                       # The row ends at the 32nd block, or at `last` if
+                       # that comes first.
+                       set_var(end, add(n, sub(31, block("operator_mod", NUM1=n, NUM2=32)))),
+                       if_then(gt(end, last), set_var(end, last)),
+                       fj("sign", x=sub(x0, 2), y=add(y0, 1), z=z,
+                          dir=menu("signMenu", "WEST"), l1="blocks",
+                          l2=join("from ", n), l3=join("to ", end), l4="")),
+               change_var(n, 1)),
+        fj("chat", msg=join(join("Done. ", wrong), " mismatches.")),
+
+        # Which block did the sword hit? Undo the layout: a column every two
+        # blocks, a row every three. Anything between the grid is ignored.
+        forever(
+            set_var(hit, fj("getHit")),
+            if_then(
+                block("operator_not", OPERAND=equals(hit, "")),
+                set_var(col, div(sub(fj("extractFromVector", vector=hit,
+                                        coordinate=menu("coordinateMenu", 0)), x0), 2)),
+                set_var(row, div(sub(fj("extractFromVector", vector=hit,
+                                        coordinate=menu("coordinateMenu", 2)), z0), 3)),
+                set_var(n, add(mul(row, 32), col)),
+                if_then(
+                    block("operator_and",
+                          OPERAND1=block("operator_and",
+                                         OPERAND1=equals(col, mathop("floor", col)),
+                                         OPERAND2=equals(row, mathop("floor", row))),
+                          OPERAND2=block("operator_and",
+                                         OPERAND1=block("operator_and",
+                                                        OPERAND1=block("operator_not", OPERAND=lt(col, 0)),
+                                                        OPERAND2=lt(col, 32)),
+                                         OPERAND2=block("operator_and",
+                                                        OPERAND1=block("operator_not", OPERAND=lt(n, first)),
+                                                        OPERAND2=block("operator_not", OPERAND=gt(n, last))))),
+                    set_var(name, fj("blockByName", name=n)),
+                    fj("showTitle", title=join("block ", n), sub=name, stay=60),
+                    fj("chat", msg=join(join("Block ", n), join(" is ", name))),
+                ),
+            ),
+            wait(0.05),
+        ),
+    )
+    return p, "every block by number.sb3"
+
+
 def main(check_only=False):
     """Write the projects, or with --check say whether they are current.
 
@@ -425,7 +673,8 @@ def main(check_only=False):
     import zipfile
 
     stale = []
-    for fn in (microphone_tower, be_the_controller, piano):
+    for fn in (microphone_tower, be_the_controller, piano, explore_map,
+               block_catalogue):
         p, name = fn()
         target = os.path.join(OUT, name)
         built = p.build()
